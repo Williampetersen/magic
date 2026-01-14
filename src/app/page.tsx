@@ -15,6 +15,8 @@ import { home, about, person, baseURL, routes } from "@/resources";
 import { Mailchimp } from "@/components";
 import { Projects } from "@/components/work/Projects";
 import { Posts } from "@/components/blog/Posts";
+import CrossMarquee from "@/components/CrossMarquee";
+import MagicBento from "@/components/MagicBento/MagicBento";
 
 export async function generateMetadata() {
   return Meta.generate({
@@ -74,7 +76,8 @@ export default function Home() {
             <Text wrap="balance" onBackground="neutral-weak" variant="heading-default-xl">
               {home.subline}
             </Text>
-          </RevealFx>
+          </RevealFx><CrossMarquee />
+
           <RevealFx paddingTop="12" delay={0.4} horizontal="center" paddingLeft="12">
             <Button
               id="about"
@@ -99,6 +102,8 @@ export default function Home() {
             </Button>
           </RevealFx>
         </Column>
+        <MagicBento spotlightRadius={500} />
+
       </Column>
       <RevealFx translateY="16" delay={0.6}>
         <Projects range={[1, 1]} />

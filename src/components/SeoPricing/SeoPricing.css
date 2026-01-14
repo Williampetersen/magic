@@ -1,0 +1,147 @@
+.seoSection {
+  max-width: 1100px;
+  margin: 36px auto;
+  padding: 0 16px;
+}
+
+.seoHeader {
+  text-align: center;
+  margin-bottom: 18px;
+}
+
+.seoTag {
+  font-size: 12px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  opacity: 0.75;
+  color: #ff9a2f;
+}
+
+.seoTitle {
+  margin: 10px 0 6px;
+  font-size: 34px;
+  line-height: 1.15;
+}
+
+.seoSubtitle {
+  margin: 0 auto;
+  max-width: 680px;
+  font-size: 14px;
+  opacity: 0.78;
+  line-height: 1.6;
+}
+
+.seoGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 22px;
+  margin-top: 22px;
+}
+
+.seoCard {
+  border-radius: 22px;
+  padding: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.22);
+  backdrop-filter: blur(12px);
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
+}
+
+.seoCard:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 36px 90px rgba(0,0,0,0.32);
+}
+
+.seoTop {
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255,255,255,0.10);
+  margin-bottom: 14px;
+}
+
+.seoPlan {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.seoPriceRow {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.seoDollar {
+  font-size: 14px;
+  opacity: 0.6;
+}
+
+.seoPrice {
+  font-size: 46px;
+  letter-spacing: 0.5px;
+  font-weight: 800;
+}
+
+.seoList {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 18px;
+  display: grid;
+  gap: 12px;
+}
+
+.seoList li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.seoDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  margin-top: 7px;
+  opacity: 0.95;
+}
+
+.seoText {
+  font-size: 13px;
+  line-height: 1.45;
+  opacity: 0.9;
+}
+
+.seoBtn {
+  width: 100%;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(255,255,255,0.06);
+  color: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.seoBtn:hover {
+  transform: translateY(-1px);
+  background: rgba(255,255,255,0.10);
+}
+
+/* ACCENTS */
+.seoCard.basic .seoPlan { color: #ff9a2f; }
+.seoCard.basic .seoDot { background: #ff9a2f; }
+.seoCard.basic .seoBtn { border-color: rgba(255,154,47,0.35); background: rgba(255,154,47,0.10); }
+
+.seoCard.standard .seoPlan { color: #4a7bff; }
+.seoCard.standard .seoDot { background: #4a7bff; }
+.seoCard.standard .seoBtn { border-color: rgba(74,123,255,0.35); background: rgba(74,123,255,0.14); }
+
+.seoCard.pro .seoPlan { color: #2fd07a; }
+.seoCard.pro .seoDot { background: #2fd07a; }
+.seoCard.pro .seoBtn { border-color: rgba(47,208,122,0.35); background: rgba(47,208,122,0.12); }
+
+@media (max-width: 980px) {
+  .seoGrid { grid-template-columns: 1fr; }
+  .seoTitle { font-size: 28px; }
+  .seoPrice { font-size: 40px; }
+}

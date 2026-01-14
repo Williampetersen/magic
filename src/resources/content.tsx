@@ -1,4 +1,4 @@
-import { About, Blog, Gallery, Home, Newsletter, Person, Social, Work, Price } from "@/types";
+import { About, Blog, Gallery, Home, Newsletter, Person, Social, Work, Page  } from "@/types";
 import { Line, Row, Text } from "@once-ui-system/core";
 
 const person: Person = {
@@ -11,6 +11,13 @@ const person: Person = {
   location: "Europe/Copenhagen", // Expecting the IANA time zone identifier, e.g., 'Europe/Vienna'
   languages: ["English", "Danish"], // optional: Leave the array empty if you don't want to display languages
 };
+const price = {
+  path: "/price",
+  label: "Pricing",
+  title: `Pricing – ${person.name}`,
+  description: `Pricing plans and service packages by ${person.name}.`,
+};
+
 
 const newsletter: Newsletter = {
   display: true,
@@ -309,4 +316,4 @@ const gallery: Gallery = {
   ],
 };
 
-export { person, social, newsletter, home, about, blog, work, gallery };
+export { person, social, newsletter, home, about, blog, work, gallery, price };
