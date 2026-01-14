@@ -1,15 +1,15 @@
-import { About, Blog, Gallery, Home, Newsletter, Person, Social, Work } from "@/types";
+import { About, Blog, Gallery, Home, Newsletter, Person, Social, Work, Price } from "@/types";
 import { Line, Row, Text } from "@once-ui-system/core";
 
 const person: Person = {
-  firstName: "Selene",
-  lastName: "Yu",
-  name: `Selene Yu`,
-  role: "Design Engineer",
-  avatar: "/images/avatar.jpg",
-  email: "example@gmail.com",
-  location: "Asia/Jakarta", // Expecting the IANA time zone identifier, e.g., 'Europe/Vienna'
-  languages: ["English", "Bahasa"], // optional: Leave the array empty if you don't want to display languages
+  firstName: "William",
+  lastName: "Petersen",
+  name: `William Petersen`,
+  role: "Google Partner in Denmark,        Microsoft Engineer, ",
+  avatar: "/images/william.png",
+  email: "Williampetersencop@gmail.com",
+  location: "Europe/Copenhagen", // Expecting the IANA time zone identifier, e.g., 'Europe/Vienna'
+  languages: ["English", "Danish"], // optional: Leave the array empty if you don't want to display languages
 };
 
 const newsletter: Newsletter = {
@@ -24,27 +24,21 @@ const social: Social = [
   // Set essentials: true for links you want to show on the about page
   {
     name: "GitHub",
-    icon: "github",
-    link: "https://github.com/once-ui-system",
+    icon: "GitHub",
+    link: "https://github.com/Williampetersen",
     essential: true,
   },
   {
     name: "LinkedIn",
     icon: "linkedin",
-    link: "https://www.linkedin.com/company/once-ui/",
+    link: "https://www.linkedin.com/in/william-petersen-a79965190/",
     essential: true,
   },
   {
     name: "Instagram",
     icon: "instagram",
-    link: "https://www.instagram.com/once_ui/",
+    link: "https://www.instagram.com/william.ptsn/",
     essential: false,
-  },
-  {
-    name: "Threads",
-    icon: "threads",
-    link: "https://www.threads.com/@once_ui",
-    essential: true,
   },
   {
     name: "Email",
@@ -60,7 +54,7 @@ const home: Home = {
   label: "Home",
   title: `${person.name}'s Portfolio`,
   description: `Portfolio website showcasing my work as a ${person.role}`,
-  headline: <>Building bridges between design and code</>,
+  headline: <>Boost Your Brand with Trust Web Ads</>,
   featured: {
     display: true,
     title: (
@@ -72,11 +66,11 @@ const home: Home = {
         </Text>
       </Row>
     ),
-    href: "/work/building-once-ui-a-customizable-design-system",
+    href: "Boost Your Brand with Trust Web Ads",
   },
   subline: (
     <>
-    I'm Selene, a design engineer at <Text as="span" size="xl" weight="strong">ONCE UI</Text>, where I craft intuitive <br /> user experiences. After hours, I build my own projects.
+    I'm William, a design engineer at <Text as="span" size="xl" weight="strong">Trust Web Ads</Text>, where I craft intuitive <br /> user experiences.
 </>
   ),
 };
@@ -102,9 +96,10 @@ const about: About = {
     title: "Introduction",
     description: (
       <>
-        Selene is a Jakarta-based design engineer with a passion for transforming complex challenges
-        into simple, elegant design solutions. Her work spans digital interfaces, interactive
-        experiences, and the convergence of design and technology.
+        William Petersen is a Copenhagen-based web and technology specialist with a strong focus on 
+        building clean, efficient, and scalable digital solutions. His work spans website management, 
+        Google Ads, and Microsoft Power Platform, combining technical expertise with practical business needs 
+        to deliver reliable and high-performing digital experiences.
       </>
     ),
   },
@@ -113,41 +108,39 @@ const about: About = {
     title: "Work Experience",
     experiences: [
       {
-        company: "FLY",
-        timeframe: "2022 - Present",
-        role: "Senior Design Engineer",
+        company: "Visit Frederiksberg",
+        timeframe: "2017 - Present",
+        role: "Developer and Admin",
         achievements: [
           <>
-            Redesigned the UI/UX for the FLY platform, resulting in a 20% increase in user
+            Redesigned the UI/UX for the Visit Frederiksberg platform, resulting in a 20% increase in user
             engagement and 30% faster load times.
           </>,
           <>
-            Spearheaded the integration of AI tools into design workflows, enabling designers to
-            iterate 50% faster.
+            Managed and maintained the website, kept content updated, handled news & events.
           </>,
         ],
         images: [
           // optional: leave the array empty if you don't want to display images
           {
             src: "/images/projects/project-01/cover-01.jpg",
-            alt: "Once UI Project",
+            alt: "Visit Frederiksberg",
             width: 16,
             height: 9,
           },
         ],
       },
       {
-        company: "Creativ3",
-        timeframe: "2018 - 2022",
-        role: "Lead Designer",
+        company: "CC Copenhagen",
+        timeframe: "2020 – Present",
+        role: "Microsoft Power Platform",
         achievements: [
           <>
             Developed a design system that unified the brand across multiple platforms, improving
             design consistency by 40%.
           </>,
           <>
-            Led a cross-functional team to launch a new product line, contributing to a 15% increase
-            in overall company revenue.
+            Started learning Power Platform there and now work remotely with the same company.
           </>,
         ],
         images: [],
@@ -156,16 +149,31 @@ const about: About = {
   },
   studies: {
     display: true, // set to false to hide this section
-    title: "Studies",
+    title: "Certificate",
     institutions: [
       {
-        name: "University of Jakarta",
-        description: <>Studied software engineering.</>,
+        name: "Bachelor of Science (BSc) in Computer Engineering",
+        description: <>DTU (Technical University of Denmark</>,
       },
+      
       {
-        name: "Build the Future",
-        description: <>Studied online marketing and personal branding.</>,
-      },
+  name: "Microsoft Power Platform)",
+  description: (
+    <>
+
+
+      <p>Washington DC - USA - 2024 - MS Certificate.</p>
+
+
+      <img
+        src="/images/projects/project-01/ms.png"
+        alt="DTU - Technical University of Denmark"
+        style={{ marginTop: 12, maxWidth: 300 }}
+      />
+    </>
+  ),
+},
+    
     ],
   },
   technical: {
@@ -173,14 +181,14 @@ const about: About = {
     title: "Technical skills",
     skills: [
       {
-        title: "Figma",
+        title: "Google Marketing",
         description: (
-          <>Able to prototype in Figma with Once UI with unnatural speed.</>
+          <>Google Ads, Email Marketing + Meta</>
         ),
         tags: [
           {
-            name: "Figma",
-            icon: "figma",
+            name: "Google Marketing",
+            icon: "Google",
           },
         ],
         // optional: leave the array empty if you don't want to display images
