@@ -68,273 +68,246 @@
 ========================================================= */
 
 /* ---------- Theme Variables ---------- */
-:root {
-  --cross-speed: 16s;
+/* =========================
+   CrossMarquee - Responsive Standard Layout
+   Paste into your global CSS (or module) and remove old conflicting rules.
+   ========================= */
 
-  --cross-surface: rgba(255, 255, 255, 0.03);
-  --cross-card-top: rgba(255, 255, 255, 0.10);
-  --cross-card-bot: rgba(255, 255, 255, 0.04);
-  --cross-border: rgba(255, 255, 255, 0.14);
-
-  --cross-fade: rgba(8, 8, 12, 1);
-  --cross-glow: rgba(120, 160, 255, 0.18);
-
-  --cross-green: #20d06b;
-  --cross-green-glow: rgba(32, 208, 107, 0.45);
+.crossSection{
+  width: 100%;
+  padding: clamp(40px, 6vw, 96px) 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden; /* stops horizontal scroll */
 }
 
-/* Light mode support */
-html[data-theme="light"],
-body[data-theme="light"],
-.theme-light,
-.light {
-  --cross-surface: rgba(0, 0, 0, 0.03);
-  --cross-card-top: rgba(0, 0, 0, 0.06);
-  --cross-card-bot: rgba(0, 0, 0, 0.03);
-  --cross-border: rgba(0, 0, 0, 0.12);
-  --cross-fade: rgba(255, 255, 255, 1);
-  --cross-glow: rgba(80, 120, 255, 0.14);
-}
-
-/* Fallback OS light */
-@media (prefers-color-scheme: light) {
-  :root {
-    --cross-surface: rgba(0, 0, 0, 0.03);
-    --cross-card-top: rgba(0, 0, 0, 0.06);
-    --cross-card-bot: rgba(0, 0, 0, 0.03);
-    --cross-border: rgba(0, 0, 0, 0.12);
-    --cross-fade: rgba(255, 255, 255, 1);
-    --cross-glow: rgba(80, 120, 255, 0.14);
-  }
-}
-
-/* ---------- Container (ONLY ONCE) ---------- */
-.crossSection {
-  max-width: 900px;
-  margin: clamp(18px, 3vw, 30px) auto;
-  padding: 0 clamp(12px, 3vw, 18px);
-}
-
-/* ---------- Header (Centered mode) ---------- */
-.crossHeader.center {
-  text-align: center;
-  display: block;
-  margin-bottom: 10px;
-}
-
-.crossHeader.center .crossHeaderText {
-  max-width: 680px;
+.crossHeader{
+  width: 100%;
+  max-width: 1100px;
   margin: 0 auto;
-}
-
-.crossTitle {
-  font-size: clamp(16px, 4vw, 22px);
-  line-height: 1.2;
-  margin: 0 0 8px 0;
-}
-
-.crossDesc {
-  margin: 0;
-  font-size: clamp(12.5px, 3.2vw, 14px);
-  line-height: 1.55;
-  opacity: 0.82;
-}
-
-/* Stat under text */
-.crossStat.center {
-  margin: 12px auto 0;
-  width: fit-content;
-
-  display: inline-flex;
-  align-items: center;
+  display: flex;
   justify-content: center;
-  gap: 8px;
-
-  padding: 8px 10px;
-  border-radius: 14px;
-
-  background: var(--cross-surface);
-  border: 1px solid var(--cross-border);
-  backdrop-filter: blur(10px);
-
-  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.16);
 }
 
-.crossDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--cross-green);
-  box-shadow:
-    0 0 0 3px rgba(32, 208, 107, 0.10),
-    0 0 14px var(--cross-green-glow),
-    0 0 26px rgba(32, 208, 107, 0.14);
-  animation: crossPulse 1.35s ease-in-out infinite;
+.crossHeader.center{
+  text-align: center;
 }
 
-@keyframes crossPulse {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50% { transform: scale(1.16); filter: brightness(1.15); }
+.crossHeaderText{
+  width: 100%;
+  max-width: 760px;
 }
 
-.crossStatNumber {
-  font-size: clamp(16px, 4.2vw, 20px);
-  font-weight: 800;
-  letter-spacing: 0.2px;
+.crossTitle{
+  margin: 0 0 10px;
+  font-size: clamp(22px, 3.2vw, 40px);
+  line-height: 1.15;
+  letter-spacing: -0.02em;
 }
 
-.crossStatLabel {
-  font-size: clamp(10.5px, 2.6vw, 12px);
-  opacity: 0.72;
-  white-space: nowrap;
-}
-
-/* ---------- Marquee ---------- */
-.crossMarquee {
-  position: relative;
-  overflow: hidden;
-
-  /* smaller height on mobile */
-  padding: 10px 0;
-  border-radius: 18px;
-
-  background: var(--cross-surface);
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.06),
-    0 16px 50px rgba(0, 0, 0, 0.28),
-    0 0 60px var(--cross-glow);
-}
-
-/* glow layer */
-.cinematicGlow {
-  background:
-    radial-gradient(120% 120% at 50% 50%, rgba(90, 120, 255, 0.06), transparent 60%),
-    var(--cross-surface);
-}
-
-/* Track */
-.crossTrack {
-  display: flex;
-  width: max-content;
-  gap: 10px;
-  padding: 6px 10px;
-  will-change: transform;
-
-  animation: crossScroll var(--cross-speed) linear infinite;
-}
-
-/* Pause on hover only for devices that actually have hover */
-@media (hover: hover) and (pointer: fine) {
-  .crossMarquee:hover .crossTrack {
-    animation-play-state: paused;
-  }
-}
-
-.crossGroup {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-/* Spacer between loops (smaller on mobile) */
-.crossLoopSpacer {
-  width: 120px;
-  height: 1px;
-  flex: 0 0 auto;
-}
-
-@keyframes crossScroll {
-  from { transform: translateX(var(--cross-start, 0px)); }
-  to { transform: translateX(var(--cross-end, -600px)); }
-}
-
-/* Cards (mobile friendly) */
-.crossCard {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  padding: 8px 10px;
-  border-radius: 999px;
-
-  background: linear-gradient(180deg, var(--cross-card-top), var(--cross-card-bot));
-  border: 1px solid var(--cross-border);
-  backdrop-filter: blur(10px);
-
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
-    0 8px 22px rgba(0, 0, 0, 0.20);
-}
-
-/* Hover effects only on desktop */
-@media (hover: hover) and (pointer: fine) {
-  .crossCard {
-    transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
-  }
-
-  .crossCard:hover {
-    transform: translateY(-2px) scale(1.03);
-    border-color: rgba(120, 160, 255, 0.45);
-    box-shadow:
-      0 18px 55px rgba(0, 0, 0, 0.35),
-      0 0 35px rgba(120, 160, 255, 0.22);
-  }
-}
-
-.crossLogo {
-  height: 22px; /* smaller on mobile */
-  width: auto;
-  display: block;
-  filter: drop-shadow(0 2px 6px rgba(0,0,0,0.22));
-}
-
-.crossLabel {
-  font-size: 11.5px;
-  font-weight: 600;
-  letter-spacing: 0.15px;
-  white-space: nowrap;
+.crossDesc{
+  margin: 0 auto;
+  max-width: 62ch;
+  font-size: clamp(14px, 1.4vw, 18px);
+  line-height: 1.65;
   opacity: 0.9;
 }
 
-/* Theme-aware fade edges (smaller on mobile) */
-.crossFade {
+.crossStat{
+  margin-top: clamp(16px, 2.2vw, 22px);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
+}
+
+.crossStat.center{
+  justify-content: center;
+}
+
+.crossDot{
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+}
+
+.crossStatNumber{
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: -0.01em;
+}
+
+.crossStatLabel{
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+/* ===== Marquee wrapper (standard max width + center) ===== */
+.crossMarquee{
+  width: 100%;
+  max-width: 1100px;
+  margin: clamp(22px, 4vw, 36px) auto 0;
+  position: relative;
+  border-radius: 18px;
+  overflow: hidden;
+  padding: 14px 0;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+}
+
+/* optional: if you have cinematicGlow class, keep it light */
+.cinematicGlow{
+  box-shadow: 0 10px 40px rgba(0,0,0,0.20);
+}
+
+/* ===== Track animation ===== */
+.crossTrack{
+  display: flex;
+  width: max-content;
+  will-change: transform;
+  animation: cross-marquee 26s linear infinite;
+  transform: translate3d(var(--cross-start, 0px), 0, 0);
+}
+
+@keyframes cross-marquee{
+  from { transform: translate3d(var(--cross-start, 0px), 0, 0); }
+  to   { transform: translate3d(var(--cross-end, -1200px), 0, 0); }
+}
+
+/* Pause on hover (desktop nice UX) */
+@media (hover:hover){
+  .crossMarquee:hover .crossTrack{ animation-play-state: paused; }
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .crossTrack{ animation: none; transform: translate3d(0,0,0); }
+}
+
+/* ===== Group + spacing ===== */
+.crossGroup{
+  display: flex;
+  align-items: center;
+  gap: clamp(10px, 1.4vw, 16px);
+  padding: 0 clamp(10px, 1.2vw, 14px);
+}
+
+.crossLoopSpacer{
+  width: clamp(24px, 4vw, 56px);
+  flex: 0 0 auto;
+}
+
+/* ===== Card sizing (standard responsive) ===== */
+.crossCard{
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  height: clamp(48px, 6vw, 64px);
+  padding: 0 clamp(12px, 1.6vw, 16px);
+
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(0,0,0,0.18);
+  backdrop-filter: blur(10px);
+
+  white-space: nowrap;
+}
+
+.crossLogo{
+  width: clamp(22px, 2.4vw, 28px);
+  height: clamp(22px, 2.4vw, 28px);
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.crossLabel{
+  font-size: clamp(12px, 1.2vw, 14px);
+  font-weight: 600;
+  opacity: 0.95;
+}
+
+/* ===== Edge fades ===== */
+.crossFade{
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 40px;
+  width: clamp(32px, 6vw, 90px);
   pointer-events: none;
   z-index: 2;
 }
 
-.crossFadeLeft {
+.crossFadeLeft{
   left: 0;
-  background: linear-gradient(to right, var(--cross-fade), rgba(0,0,0,0));
+  background: linear-gradient(to right, rgba(0,0,0,0.65), rgba(0,0,0,0));
 }
 
-.crossFadeRight {
+.crossFadeRight{
   right: 0;
-  background: linear-gradient(to left, var(--cross-fade), rgba(0,0,0,0));
+  background: linear-gradient(to left, rgba(0,0,0,0.65), rgba(0,0,0,0));
 }
 
-/* ---------- Tablet & Desktop improvements ---------- */
-@media (min-width: 640px) {
-  .crossMarquee { padding: 12px 0; }
-  .crossLoopSpacer { width: 160px; }
-  .crossLogo { height: 24px; }
-  .crossFade { width: 52px; }
-  .crossTrack, .crossGroup { gap: 12px; }
+/* ===== Mobile tweaks ===== */
+@media (max-width: 480px){
+  .crossSection{ padding-left: 12px; padding-right: 12px; }
+  .crossMarquee{ border-radius: 14px; }
+  .crossCard{ gap: 8px; }
+  .crossLabel{ font-weight: 600; }
+}
+/* ===== Glowing green stat dot ===== */
+.crossDot{
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #22c55e; /* modern green */
+
+  /* Glow */
+  box-shadow:
+    0 0 6px rgba(34,197,94,0.9),
+    0 0 14px rgba(34,197,94,0.6),
+    0 0 28px rgba(34,197,94,0.35);
+
+  position: relative;
 }
 
-@media (min-width: 900px) {
-  .crossLoopSpacer { width: 220px; }
-  .crossFade { width: 60px; }
-  .crossLogo { height: 26px; }
+/* Pulse ring */
+.crossDot::after{
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: rgba(34,197,94,0.35);
+  filter: blur(8px);
+  animation: crossDotPulse 2.4s ease-out infinite;
 }
 
-/* Reduce motion */
-@media (prefers-reduced-motion: reduce) {
-  .crossTrack { animation: none; }
-  .crossDot { animation: none; }
+/* Pulse animation */
+@keyframes crossDotPulse{
+  0%{
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  70%{
+    transform: scale(1.4);
+    opacity: 0;
+  }
+  100%{
+    opacity: 0;
+  }
 }
 
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce){
+  .crossDot::after{
+    animation: none;
+    opacity: 0.4;
+  }
+}
