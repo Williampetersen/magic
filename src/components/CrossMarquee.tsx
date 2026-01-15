@@ -42,17 +42,13 @@ export default function CrossMarquee() {
   const firstGroupRef = useRef<HTMLDivElement | null>(null);
   const marqueeRef = useRef<HTMLDivElement | null>(null);
 
+  // ✅ Marquee seamless loop calc
   useEffect(() => {
     const apply = () => {
       if (!firstGroupRef.current || !marqueeRef.current) return;
 
-      // One full group width = items + spacer
       const groupWidth = firstGroupRef.current.offsetWidth;
-
-      // Start in the middle of the group
       const startX = -groupWidth / 2;
-
-      // Move exactly one group width for a perfect seamless loop
       const endX = startX - groupWidth;
 
       marqueeRef.current.style.setProperty("--cross-start", `${startX}px`);
@@ -62,6 +58,32 @@ export default function CrossMarquee() {
     apply();
     window.addEventListener("resize", apply);
     return () => window.removeEventListener("resize", apply);
+  }, []);
+
+  // ✅ Mouse-follow glow effect on cards
+  useEffect(() => {
+    const cards = document.querySelectorAll<HTMLElement>(".crossCard");
+
+    const move = (e: MouseEvent) => {
+      const el = e.currentTarget as HTMLElement;
+      const rect = el.getBoundingClientRect();
+
+      const x = ((e.clientX - rect.left) / rect.width) * 100;
+      const y = ((e.clientY - rect.top) / rect.height) * 100;
+
+      el.style.setProperty("--x", `${x}%`);
+      el.style.setProperty("--y", `${y}%`);
+    };
+
+    cards.forEach((card) => {
+      card.addEventListener("mousemove", move);
+    });
+
+    return () => {
+      cards.forEach((card) => {
+        card.removeEventListener("mousemove", move);
+      });
+    };
   }, []);
 
   return (
