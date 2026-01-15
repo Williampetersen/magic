@@ -27,7 +27,7 @@ const newsletter: Newsletter = {
 
 const social: Social = [
   // Links are automatically displayed.
-  // Import new icons in /once-ui/icons.ts
+  // Import new icons in /src/resources/icons.ts
   // Set essentials: true for links you want to show on the about page
   {
     name: "GitHub",
@@ -66,14 +66,14 @@ const home: Home = {
     display: true,
     title: (
       <Row gap="12" vertical="center">
-        <strong className="ml-4">Once UI</strong>{" "}
+        <strong className="ml-4">Trust Web Ads</strong>{" "}
         <Line background="brand-alpha-strong" vert height="20" />
         <Text marginRight="4" onBackground="brand-medium">
           Featured work
         </Text>
       </Row>
     ),
-    href: "Boost Your Brand with Trust Web Ads",
+    href: "https://www.trustwebads.com/",
   },
   subline: (
     <>
@@ -205,7 +205,7 @@ const about: About = {
       {
         title: "Next.js",
         description: (
-          <>Building next gen apps with Next.js + Once UI + Supabase.</>
+          <>Building next-gen apps with Next.js, Supabase, and custom UI systems.</>
         ),
         tags: [
           {
