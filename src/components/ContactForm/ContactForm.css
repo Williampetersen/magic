@@ -1,0 +1,121 @@
+.contactWrap {
+  position: relative;
+  background: radial-gradient(120% 120% at 0% 0%, rgba(255, 255, 255, 0.08), transparent 45%),
+    radial-gradient(120% 120% at 100% 0%, rgba(255, 255, 255, 0.06), transparent 50%);
+}
+
+.contactHeader {
+  text-align: center;
+}
+
+.contactForm {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contactGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.contactGridSingle {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.contactField {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.contactLabel {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  text-align: left;
+}
+
+.contactSelect {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 10, 12, 0.9);
+  color: #f5f5f5;
+}
+
+.contactSelect:focus {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.08);
+}
+
+.contactSelect option {
+  background: #0f0f12;
+  color: #f5f5f5;
+}
+
+.contactSelect:hover {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.contactSelect:disabled {
+  opacity: 0.6;
+}
+
+.contactHoneypot {
+  position: absolute;
+  left: -9999px;
+  opacity: 0;
+  height: 0;
+  pointer-events: none;
+}
+
+.contactStatus {
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  width: 100%;
+}
+
+.contactStatus.success {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+
+.contactStatus.error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+
+.contactAction {
+  width: 100%;
+}
+
+.contactButton {
+  transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.contactButton:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+.contactButton:active {
+  transform: translateY(0);
+  box-shadow: none;
+}
+
+@media (max-width: 700px) {
+  .contactGrid,
+  .contactGridSingle {
+    grid-template-columns: 1fr;
+  }
+}

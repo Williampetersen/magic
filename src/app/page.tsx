@@ -12,7 +12,7 @@ import {
   Line,
 } from "@once-ui-system/core";
 import { home, about, person, baseURL, routes } from "@/resources";
-import { Mailchimp } from "@/components";
+import { ContactForm, Mailchimp } from "@/components";
 import { Projects } from "@/components/work/Projects";
 import { Posts } from "@/components/blog/Posts";
 import CrossMarquee from "@/components/CrossMarquee";
@@ -129,6 +129,7 @@ export default function Home() {
         </Column>
       )}
       <Projects range={[2]} />
+      <ContactForm />
       <Mailchimp />
     </Column>
   );
