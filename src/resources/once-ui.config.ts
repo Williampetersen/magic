@@ -23,6 +23,9 @@ const routes: RoutesConfig = {
   "/blog": true,
   "/gallery": true,
   "/price": true,
+  "/web-design": true,
+  "/seo": true,
+  "/email-marketing": true,
   
 };
 

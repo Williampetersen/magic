@@ -1,11 +1,11 @@
-import { About, Blog, Gallery, Home, Newsletter, Person, Social, Work, Page  } from "@/types";
+import { About, Blog, Gallery, Home, Newsletter, Person, Social, Work } from "@/types";
 import { Line, Row, Text } from "@once-ui-system/core";
 
 const person: Person = {
   firstName: "William",
   lastName: "Petersen",
   name: `William Petersen`,
-  role: "Google Partner in Denmark,        Microsoft Engineer, ",
+  role: "Google Ads Partner in Denmark | Microsoft Power Platform Engineer",
   avatar: "/images/william.png",
   email: "Williampetersencop@gmail.com",
   location: "Europe/Copenhagen", // Expecting the IANA time zone identifier, e.g., 'Europe/Vienna'
@@ -14,7 +14,7 @@ const person: Person = {
 const price = {
   path: "/price",
   label: "Pricing",
-  title: `Pricing – ${person.name}`,
+  title: `Pricing - ${person.name}`,
   description: `Pricing plans and service packages by ${person.name}.`,
 };
 
@@ -31,7 +31,7 @@ const social: Social = [
   // Set essentials: true for links you want to show on the about page
   {
     name: "GitHub",
-    icon: "GitHub",
+    icon: "github",
     link: "https://github.com/Williampetersen",
     essential: true,
   },
@@ -60,7 +60,7 @@ const home: Home = {
   image: "/images/og/home.jpg",
   label: "Home",
   title: `${person.name}'s Portfolio`,
-  description: `Portfolio website showcasing my work as a ${person.role}`,
+  description: `Portfolio website showcasing my work as a ${person.role}.`,
   headline: <>Boost Your Brand with Trust Web Ads</>,
   featured: {
     display: true,
@@ -77,16 +77,20 @@ const home: Home = {
   },
   subline: (
     <>
-    I'm William, a design engineer at <Text as="span" size="xl" weight="strong">Trust Web Ads</Text>, where I craft intuitive <br /> user experiences.
-</>
+      I'm William, a design engineer at{" "}
+      <Text as="span" size="xl" weight="strong">
+        Trust Web Ads
+      </Text>
+      , where I build fast, reliable websites and growth systems that convert.
+    </>
   ),
 };
 
 const about: About = {
   path: "/about",
   label: "About",
-  title: `About – ${person.name}`,
-  description: `Meet ${person.name}, ${person.role} from ${person.location}`,
+  title: `About - ${person.name}`,
+  description: `Meet ${person.name}, ${person.role}.`,
   tableOfContent: {
     display: true,
     subItems: false,
@@ -96,17 +100,16 @@ const about: About = {
   },
   calendar: {
     display: true,
-    link: "https://cal.com",
+    link: "https://cal.com/william-petersen-8dkqdh",
   },
   intro: {
     display: true,
     title: "Introduction",
     description: (
       <>
-        William Petersen is a Copenhagen-based web and technology specialist with a strong focus on 
-        building clean, efficient, and scalable digital solutions. His work spans website management, 
-        Google Ads, and Microsoft Power Platform, combining technical expertise with practical business needs 
-        to deliver reliable and high-performing digital experiences.
+        William Petersen is a Copenhagen-based web and growth specialist focused on clean, scalable digital
+        systems. He combines web design, Google Ads, and Microsoft Power Platform expertise to deliver
+        measurable results: faster websites, stronger conversion rates, and reliable automation.
       </>
     ),
   },
@@ -120,11 +123,11 @@ const about: About = {
         role: "Developer and Admin",
         achievements: [
           <>
-            Redesigned the UI/UX for the Visit Frederiksberg platform, resulting in a 20% increase in user
-            engagement and 30% faster load times.
+            Redesigned the platform UI/UX, improving engagement by about 20% and cutting load times by
+            roughly 30%.
           </>,
           <>
-            Managed and maintained the website, kept content updated, handled news & events.
+            Owned site operations: content updates, news and events, and performance monitoring.
           </>,
         ],
         images: [
@@ -139,15 +142,15 @@ const about: About = {
       },
       {
         company: "CC Copenhagen",
-        timeframe: "2020 – Present",
+        timeframe: "2020 - Present",
         role: "Microsoft Power Platform",
         achievements: [
           <>
-            Developed a design system that unified the brand across multiple platforms, improving
-            design consistency by 40%.
+            Built a design system that unified the brand across platforms, improving consistency by
+            about 40%.
           </>,
           <>
-            Started learning Power Platform there and now work remotely with the same company.
+            Implemented Power Platform workflows to reduce manual admin work and improve reporting.
           </>,
         ],
         images: [],
@@ -156,31 +159,16 @@ const about: About = {
   },
   studies: {
     display: true, // set to false to hide this section
-    title: "Certificate",
+    title: "Certifications",
     institutions: [
       {
         name: "Bachelor of Science (BSc) in Computer Engineering",
-        description: <>DTU (Technical University of Denmark</>,
+        description: <>DTU (Technical University of Denmark)</>,
       },
-      
       {
-  name: "Microsoft Power Platform)",
-  description: (
-    <>
-
-
-      <p>Washington DC - USA - 2024 - MS Certificate.</p>
-
-
-      <img
-        src="/images/projects/project-01/ms.png"
-        alt="DTU - Technical University of Denmark"
-        style={{ marginTop: 12, maxWidth: 300 }}
-      />
-    </>
-  ),
-},
-    
+        name: "Microsoft Power Platform Certificate",
+        description: <>Washington, DC, USA - 2024</>,
+      },
     ],
   },
   technical: {
@@ -195,7 +183,7 @@ const about: About = {
         tags: [
           {
             name: "Google Marketing",
-            icon: "Google",
+            icon: "googleads",
           },
         ],
         // optional: leave the array empty if you don't want to display images
@@ -259,7 +247,7 @@ const blog: Blog = {
 const work: Work = {
   path: "/work",
   label: "Work",
-  title: `Projects – ${person.name}`,
+  title: `Projects - ${person.name}`,
   description: `Design and dev projects by ${person.name}`,
   // Create new project pages by adding a new .mdx file to app/blog/posts
   // All projects will be listed on the /home and /work routes
@@ -268,7 +256,7 @@ const work: Work = {
 const gallery: Gallery = {
   path: "/gallery",
   label: "Gallery",
-  title: `Photo gallery – ${person.name}`,
+  title: `Photo gallery - ${person.name}`,
   description: `A photo collection by ${person.name}`,
   // Images by https://lorant.one
   // These are placeholder images, replace with your own

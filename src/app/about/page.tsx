@@ -28,6 +28,15 @@ export async function generateMetadata() {
 }
 
 export default function About() {
+  const locationLabel =
+    person.location.includes("/") ? person.location.split("/").pop() ?? person.location : person.location;
+  const locationDisplay = locationLabel.replace("_", " ");
+  const highlights = [
+    { label: "Primary focus", value: "Web design + growth systems", icon: "grid" },
+    { label: "Specialties", value: "SEO, Ads, Automation", icon: "rocket" },
+    { label: "Based in", value: locationDisplay, icon: "globe" },
+  ];
+
   const structure = [
     {
       title: about.intro.title,
@@ -51,7 +60,7 @@ export default function About() {
     },
   ];
   return (
-    <Column maxWidth="m">
+    <Column maxWidth="m" gap="xl">
       <Schema
         as="webPage"
         baseURL={baseURL}
@@ -77,7 +86,7 @@ export default function About() {
           <TableOfContents structure={structure} about={about} />
         </Column>
       )}
-      <Row fillWidth s={{ direction: "column"}} horizontal="center">
+      <Row fillWidth s={{ direction: "column" }} horizontal="center">
         {about.avatar.display && (
           <Column
             className={styles.avatar}
@@ -96,7 +105,7 @@ export default function About() {
             <Avatar src={person.avatar} size="xl" />
             <Row gap="8" vertical="center">
               <Icon onBackground="accent-weak" name="globe" />
-              {person.location}
+              {locationDisplay}
             </Row>
             {person.languages && person.languages.length > 0 && (
               <Row wrap gap="8">
@@ -194,6 +203,17 @@ export default function About() {
                 )}
               </Row>
             )}
+            <Row className={styles.highlightGrid}>
+              {highlights.map((item) => (
+                <Column key={item.label} className={styles.highlightCard} gap="8">
+                  <Row gap="8" vertical="center">
+                    <Icon name={item.icon} onBackground="brand-weak" />
+                    <Text className={styles.highlightLabel}>{item.label}</Text>
+                  </Row>
+                  <Text variant="heading-strong-s">{item.value}</Text>
+                </Column>
+              ))}
+            </Row>
           </Column>
 
           {about.intro.display && (
