@@ -52,8 +52,19 @@ export default async function RootLayout({
               (function() {
                 try {
                   const root = document.documentElement;
-                  const defaultTheme = 'system';
-                  
+                  const defaultTheme = ${JSON.stringify(style.theme)};
+
+                  // Reset the saved theme once whenever the default changes,
+                  // so earlier saved light themes don't override the new default
+                  if (localStorage.getItem('theme-default') !== defaultTheme) {
+                    localStorage.setItem('theme-default', defaultTheme);
+                    if (defaultTheme === 'system') {
+                      localStorage.removeItem('data-theme');
+                    } else {
+                      localStorage.setItem('data-theme', defaultTheme);
+                    }
+                  }
+
                   // Set defaults from config
                   const config = ${JSON.stringify({
                     brand: style.brand,
@@ -75,7 +86,8 @@ export default async function RootLayout({
                   
                   // Resolve theme
                   const resolveTheme = (themeValue) => {
-                    if (!themeValue || themeValue === 'system') {
+                    themeValue = themeValue || defaultTheme;
+                    if (themeValue === 'system') {
                       return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
                     }
                     return themeValue;
