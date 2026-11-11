@@ -1,4 +1,4 @@
-import { db, type Row } from "./db";
+import { type Row, db } from "./db";
 import type { LeadInput } from "./emails";
 
 export type LeadTracking = { session: Row; pageviews: Row[]; earlierVisits: number };

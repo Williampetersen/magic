@@ -1,4 +1,4 @@
-import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import { type NeonQueryFunction, neon } from "@neondatabase/serverless";
 
 let client: NeonQueryFunction<false, false> | null = null;
 

@@ -28,8 +28,7 @@ type Layout = {
   button?: { label: string; url: string };
 };
 
-const FONT =
-  "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
+const FONT = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif";
 
 /** Mobile-friendly HTML email plus a plain-text copy of the same content. */
 function render(l: Layout) {
@@ -291,7 +290,7 @@ export function summaryEmail(s: Row, pageviews: Row[], events: Row[], origin: st
       badge: "Visit summary",
       color: COLORS.summary,
       title,
-      intro: "The visit ended (no activity for a while). Here is the full journey.",
+      intro: "This visit is over. Here is the full journey.",
       sections,
       button: visitorButton(origin, s),
     }),
@@ -343,10 +342,13 @@ export function digestEmail(d: DigestData, origin: string): BuiltEmail {
       },
     });
   }
-  if (d.countries.length) sections.push({ heading: "Top countries", table: countTable("Country", d.countries) });
-  if (d.cities.length) sections.push({ heading: "Top cities", table: countTable("City", d.cities) });
+  if (d.countries.length)
+    sections.push({ heading: "Top countries", table: countTable("Country", d.countries) });
+  if (d.cities.length)
+    sections.push({ heading: "Top cities", table: countTable("City", d.cities) });
   if (d.pages.length) sections.push({ heading: "Top pages", table: countTable("Page", d.pages) });
-  if (d.devices.length) sections.push({ heading: "Devices", table: countTable("Device", d.devices) });
+  if (d.devices.length)
+    sections.push({ heading: "Devices", table: countTable("Device", d.devices) });
   if (d.leads.length) {
     sections.push({
       heading: "Leads",
@@ -444,6 +446,24 @@ export function leadEmail(
       button: tracking
         ? visitorButton(origin, tracking.session)
         : { label: "Open leads in dashboard", url: `${origin}/admin/leads` },
+    }),
+  };
+}
+
+export function testEmail(origin: string): BuiltEmail {
+  return {
+    subject: "✅ Test email from your visitor tracking",
+    ...render({
+      badge: "Test",
+      color: COLORS.lead,
+      title: "Email notifications are working",
+      intro: "This is a test sent from Admin → Settings.",
+      sections: [
+        {
+          note: "If you can read this, your SMTP settings are correct and Instagram visitor alerts will arrive at this address.",
+        },
+      ],
+      button: { label: "Open dashboard", url: `${origin}/admin` },
     }),
   };
 }

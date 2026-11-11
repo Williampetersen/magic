@@ -39,11 +39,16 @@ function readConsent(): Consent {
 function uuid() {
   if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
   return "10000000-1000-4000-8000-100000000000".replace(/[018]/g, (c) =>
-    (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(16),
+    (Number(c) ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (Number(c) / 4)))).toString(
+      16,
+    ),
   );
 }
 
-function post(data: Record<string, unknown>, beacon = false): Promise<{ expired?: boolean } | null> {
+function post(
+  data: Record<string, unknown>,
+  beacon = false,
+): Promise<{ expired?: boolean } | null> {
   const payload = JSON.stringify(data);
   if (beacon && typeof navigator.sendBeacon === "function") {
     navigator.sendBeacon(ENDPOINT, new Blob([payload], { type: "text/plain" }));
@@ -73,7 +78,12 @@ function describeClick(target: EventTarget | null) {
   const el = target.closest("a, button, [role='button'], [data-track]");
   if (!el || el.closest("[data-no-track]")) return null;
 
-  const text = (el.getAttribute("data-track") || el.getAttribute("aria-label") || el.textContent || "")
+  const text = (
+    el.getAttribute("data-track") ||
+    el.getAttribute("aria-label") ||
+    el.textContent ||
+    ""
+  )
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, 120);
@@ -93,15 +103,30 @@ function describeClick(target: EventTarget | null) {
     }
   }
 
-  const card = el.closest("[class*='pricing' i], [class*='pbCard'], [class*='plan' i]");
-  if (card) {
-    const plan = card.querySelector("h2, h3, h4")?.textContent?.replace(/\s+/g, " ").trim();
-    return { type: "click_pricing_plan", label: [plan, text].filter(Boolean).join(" – ").slice(0, 160) };
+  // A click inside a plan card of a pricing section.
+  const card = el.closest("article");
+  const pricing = card?.closest("[class*='pricing' i], section[aria-label*='pricing' i]");
+  if (card && pricing) {
+    // The plan name is the card's heading, or else its first line of text.
+    const heading = card.querySelector("h1, h2, h3, h4")?.textContent;
+    const firstLine = (card as HTMLElement).innerText?.split("\n").find((line) => line.trim());
+    const plan = (heading || firstLine || "").replace(/\s+/g, " ").trim().slice(0, 60);
+    const section = pricing.getAttribute("aria-label");
+    return {
+      type: "click_pricing_plan",
+      label: [section ? `${section}: ${plan}` : plan, plan === text ? "" : text]
+        .filter(Boolean)
+        .join(" – ")
+        .slice(0, 160),
+    };
   }
 
   if (!text) return null;
   const isButton = el.tagName === "BUTTON" || /button/i.test(el.className?.toString() || "");
-  return { type: isButton ? "click_cta" : "click_link", label: href ? `${text} → ${new URL(href).pathname}` : text };
+  return {
+    type: isButton ? "click_cta" : "click_link",
+    label: href ? `${text} → ${new URL(href).pathname}` : text,
+  };
 }
 
 export function Tracker() {
@@ -130,7 +155,12 @@ export function Tracker() {
   useEffect(() => {
     if (consent === null || consent === "accepted" || isAdmin || anonymousCounted) return;
     anonymousCounted = true;
-    post({ t: "anon", path: window.location.pathname, search: firstSearch, referrer: firstReferrer });
+    post({
+      t: "anon",
+      path: window.location.pathname,
+      search: firstSearch,
+      referrer: firstReferrer,
+    });
   }, [consent, isAdmin]);
 
   // Full tracking after Accept: one pageview per route.
@@ -143,7 +173,9 @@ export function Tracker() {
     const sendPageview = (p: Page) => {
       if (p.sent) return;
       p.sent = true;
-      const nav = navigator as Navigator & { connection?: { effectiveType?: string; type?: string } };
+      const nav = navigator as Navigator & {
+        connection?: { effectiveType?: string; type?: string };
+      };
       post({
         t: "pv",
         c: 1,
@@ -164,7 +196,7 @@ export function Tracker() {
     const startPage = () => {
       const p: Page = {
         pv: uuid(),
-        path: window.location.pathname,
+        path: pathname,
         sent: false,
         activeMs: 0,
         visibleSince: document.visibilityState === "visible" ? Date.now() : null,
@@ -176,7 +208,7 @@ export function Tracker() {
       page.current = p;
     };
 
-    const ping = (beacon: boolean) => {
+    const ping = (beacon: boolean, leaving = false) => {
       const p = page.current;
       if (!p) return;
       if (!p.sent) {
@@ -184,7 +216,15 @@ export function Tracker() {
         sendPageview(p);
       }
       p.maxScroll = Math.max(p.maxScroll, scrollPercent());
-      post({ t: "ping", c: 1, pv: p.pv, s: elapsed(p), sc: p.maxScroll }, beacon).then((res) => {
+      const data = {
+        t: "ping",
+        c: 1,
+        pv: p.pv,
+        s: elapsed(p),
+        sc: p.maxScroll,
+        f: leaving ? 1 : 0,
+      };
+      post(data, beacon).then((res) => {
         // The visit timed out on the server: begin a new one on this page.
         if (res?.expired && page.current === p) startPage();
       });
@@ -207,7 +247,8 @@ export function Tracker() {
       }
     };
 
-    const onPageHide = () => ping(true);
+    // The page is being closed: tells the server the visit is probably over.
+    const onPageHide = () => ping(true, true);
 
     const onClick = (event: MouseEvent) => {
       const click = describeClick(event.target);
@@ -218,7 +259,13 @@ export function Tracker() {
       if (formStarted.current || !(event.target instanceof Element)) return;
       if (!event.target.closest("form.contactForm")) return;
       formStarted.current = true;
-      post({ t: "ev", c: 1, type: "form_start", label: "Contact form", path: window.location.pathname });
+      post({
+        t: "ev",
+        c: 1,
+        type: "form_start",
+        label: "Contact form",
+        path: window.location.pathname,
+      });
     };
 
     startPage();
@@ -260,11 +307,11 @@ export function Tracker() {
 
   return (
     <Column
+      as="section"
       data-no-track
       className={styles.banner}
-      role="dialog"
       aria-label="Cookie consent"
-      background="surface"
+      background="page"
       border="neutral-alpha-medium"
       radius="l"
       shadow="l"
@@ -274,7 +321,7 @@ export function Tracker() {
       <Column gap="4">
         <Text variant="heading-strong-s">Cookies and visitor statistics</Text>
         <Text variant="body-default-s" onBackground="neutral-weak">
-          With your permission I use one first-party cookie to see how visitors use this site (pages,
+          With your permission I use first-party cookies to see how visitors use this site (pages,
           device, approximate location). No ads, nothing is sold.{" "}
           <SmartLink href="/privacy">Privacy policy</SmartLink>
         </Text>

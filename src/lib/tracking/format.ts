@@ -47,7 +47,8 @@ export function fmtAgo(d: DateInput, now = Date.now()) {
   if (diff < 60) return "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)} h ago`;
-  return `${Math.floor(diff / 86400)} d ago`;
+  const days = Math.floor(diff / 86400);
+  return `${days} ${days === 1 ? "day" : "days"} ago`;
 }
 
 export const PLACEMENT_LABELS: Record<string, string> = {
@@ -85,16 +86,27 @@ export function sourceLabel(s: Row) {
 }
 
 export function locationLabel(s: Row) {
-  return [s.city, s.region, s.country].filter(Boolean).join(", ") || "Unknown location";
+  // Outside Denmark the region is only a short code ("NH", "03"), which says little.
+  const region = s.region && !/^[A-Z0-9]{1,3}$/.test(s.region) ? s.region : null;
+  return [s.city, region, s.country].filter(Boolean).join(", ") || "Unknown location";
+}
+
+/** "iPhone 13", "Samsung Galaxy S23 Ultra", "Mac", "Windows computer" */
+export function deviceName(s: Row) {
+  if (s.device_model === "Macintosh") return "Mac";
+  if (s.device_model) {
+    const showVendor =
+      s.device_vendor && s.device_vendor !== "Apple" && !s.device_model.startsWith(s.device_vendor);
+    return showVendor ? `${s.device_vendor} ${s.device_model}` : s.device_model;
+  }
+  if (s.device_type === "mobile") return "Phone";
+  if (s.device_type === "tablet") return "Tablet";
+  if (!s.device_type || s.device_type === "desktop") return s.os ? `${s.os} computer` : "Computer";
+  return s.device_type[0].toUpperCase() + s.device_type.slice(1);
 }
 
 export function deviceLabel(s: Row) {
-  const model = [s.device_vendor, s.device_model]
-    .filter(Boolean)
-    .join(" ")
-    .replace(/^Apple (iPhone|iPad)/, "$1");
   const os = [s.os, s.os_version].filter(Boolean).join(" ");
   const browser = [s.browser, s.browser_version?.split(".")[0]].filter(Boolean).join(" ");
-  const type = s.device_type ? s.device_type[0].toUpperCase() + s.device_type.slice(1) : null;
-  return [model || type, os, browser].filter(Boolean).join(" · ") || "Unknown device";
+  return [deviceName(s), os, browser].filter(Boolean).join(" · ");
 }

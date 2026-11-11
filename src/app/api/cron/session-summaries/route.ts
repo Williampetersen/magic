@@ -1,8 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server";
-import { isCronAuthorized } from "@/lib/tracking/cron";
+import { cronOrigin, isCronAuthorized } from "@/lib/tracking/cron";
 import { hasDb } from "@/lib/tracking/db";
 import { closeStaleSessions } from "@/lib/tracking/notify";
-import { siteOrigin } from "@/lib/tracking/settings";
+import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +22,7 @@ export async function GET(request: NextRequest) {
   let emails = 0;
   // Work through the backlog in batches of 25.
   for (let i = 0; i < 8; i++) {
-    const result = await closeStaleSessions(siteOrigin());
+    const result = await closeStaleSessions(cronOrigin(request));
     closed += result.closed;
     emails += result.emails;
     if (result.closed < 25) break;

@@ -1,19 +1,23 @@
-import { after, type NextRequest, NextResponse } from "next/server";
+import { ADMIN_COOKIE, verifySessionToken } from "@/lib/tracking/adminToken";
 import { hasDb } from "@/lib/tracking/db";
 import { isBot, isUuid } from "@/lib/tracking/detect";
 import { siteOrigin } from "@/lib/tracking/settings";
 import {
+  SESSION_COOKIE,
+  type TrackContext,
+  VISITOR_COOKIE,
   recordAnonymous,
   recordEvent,
   recordPageview,
   recordPing,
-  SESSION_COOKIE,
-  type TrackContext,
-  VISITOR_COOKIE,
 } from "@/lib/tracking/track";
+import { type NextRequest, NextResponse, after } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+// Background work (emails, and the short wait after a visitor leaves) may
+// continue after the response has been sent.
+export const maxDuration = 60;
 
 const empty = () => new NextResponse(null, { status: 204 });
 
@@ -31,6 +35,9 @@ export async function POST(request: NextRequest) {
 
     const ua = request.headers.get("user-agent") || "";
     if (isBot(ua)) return empty();
+
+    // Do not record the site owner while they are logged in to the dashboard.
+    if (verifySessionToken(request.cookies.get(ADMIN_COOKIE)?.value)) return empty();
 
     // Only accept calls from our own pages.
     const origin = request.headers.get("origin");
@@ -66,6 +73,7 @@ export async function POST(request: NextRequest) {
 
     if (body.t === "pv") {
       const result = await recordPageview(ctx, body);
+      if (!result) return empty();
       after(() => result.background().catch((err) => console.error("track background", err)));
       const res = NextResponse.json({ ok: true });
       res.cookies.set(VISITOR_COOKIE, result.visitorId, cookieOptions(60 * 60 * 24 * 365));

@@ -1,4 +1,3 @@
-import { type NextRequest, NextResponse } from "next/server";
 import { hasDb } from "@/lib/tracking/db";
 import { isUuid } from "@/lib/tracking/detect";
 import { type LeadInput, leadEmail } from "@/lib/tracking/emails";
@@ -7,6 +6,7 @@ import { escapeHtml, sendMail } from "@/lib/tracking/mail";
 import { deliver } from "@/lib/tracking/notify";
 import { getSettings, isOn, siteOrigin } from "@/lib/tracking/settings";
 import { SESSION_COOKIE, VISITOR_COOKIE } from "@/lib/tracking/track";
+import { type NextRequest, NextResponse } from "next/server";
 
 type ContactPayload = {
   firstName: string;

@@ -1,9 +1,23 @@
-import { Column, Heading, Meta, SmartLink, Text } from "@once-ui-system/core";
 import { CookieSettingsButton } from "@/components/tracking/CookieSettingsButton";
+import { hasDb } from "@/lib/tracking/db";
+import { getSettings, num } from "@/lib/tracking/settings";
 import { baseURL, person } from "@/resources";
+import { Column, Heading, Meta, SmartLink, Text } from "@once-ui-system/core";
 
 const title = "Privacy policy";
 const description = "What this website collects about visitors, why, and how long it is kept.";
+
+// Re-read the retention period from the admin settings once an hour.
+export const revalidate = 3600;
+
+async function retentionDays() {
+  try {
+    if (!hasDb()) return 90;
+    return num(await getSettings(), "retention_days", 1, 3650);
+  } catch {
+    return 90;
+  }
+}
 
 export async function generateMetadata() {
   return Meta.generate({ title, description, baseURL, path: "/privacy" });
@@ -40,8 +54,9 @@ function List({ items }: { items: string[] }) {
   );
 }
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
   const email = person.email.toLowerCase();
+  const days = await retentionDays();
   return (
     <Column maxWidth="s" gap="32" paddingY="24">
       <Column gap="8">
@@ -62,7 +77,8 @@ export default function PrivacyPage() {
         <P>
           Your visit is only counted. I store the page you opened, your country, whether you came
           from Instagram, and the time. No cookie is set, no IP address is stored in any form, and
-          the visit cannot be linked to you.
+          the visit cannot be linked to you. Your choice is remembered in your browser so you are
+          not asked again.
         </P>
       </Section>
 
@@ -70,7 +86,7 @@ export default function PrivacyPage() {
         <P>I collect the following to understand which content and social media posts work:</P>
         <List
           items={[
-            "A random visitor ID stored in one first-party cookie for up to 1 year, to recognise a returning browser.",
+            "Two first-party cookies: a random visitor ID kept for up to 1 year, to recognise a returning browser, and a visit ID that lasts a few hours.",
             "Pages you view, time spent on each page, how far you scroll, and which buttons and links you click.",
             "Where you came from: the referring website and campaign tags in the link (for example an Instagram story or bio link).",
             "Approximate location from your IP address: country, region, city and postal code. This is the location of your internet connection, not your exact position.",
@@ -105,18 +121,19 @@ export default function PrivacyPage() {
 
       <Section heading="How long it is kept">
         <P>
-          Visit statistics are deleted automatically after 90 days. Contact requests are kept for as
-          long as needed to handle your enquiry and any customer relationship that follows, and are
-          deleted on request.
+          Visit statistics are deleted automatically after {days} days. Contact requests are kept
+          for as long as needed to handle your enquiry and any customer relationship that follows,
+          and are deleted on request.
         </P>
       </Section>
 
       <Section heading="Who receives the data">
         <P>
-          The data is not sold and not used for advertising. It is processed by the service providers
-          that run this website: Vercel (hosting), Neon (database, stored in the EU) and the email
-          provider used to send notifications. If the optional internet-provider lookup is active,
-          your IP address is sent to IPinfo for that lookup and is not stored by this website.
+          The data is not sold and not used for advertising. It is processed by the service
+          providers that run this website: Vercel (hosting), Neon (database, stored in the EU) and
+          the email provider used to send notifications. If the optional internet-provider lookup is
+          active, your IP address is sent to IPinfo for that lookup and is not stored by this
+          website.
         </P>
       </Section>
 

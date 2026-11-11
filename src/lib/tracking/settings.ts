@@ -14,6 +14,7 @@ export const SETTING_DEFAULTS = {
   high_interest_seconds: "120",
   pricing_paths: "/price",
   arrival_rate_limit_minutes: "30",
+  max_emails_per_hour: "30",
   session_timeout_minutes: "15",
   alert_email_to: "",
   retention_days: "90",

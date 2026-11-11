@@ -1,16 +1,16 @@
-import { db, type Row } from "./db";
+import { type Row, db } from "./db";
 import {
-  arrivalEmail,
   type BuiltEmail,
   type DigestData,
+  arrivalEmail,
   digestEmail,
   formAbandonedEmail,
   highInterestEmail,
   summaryEmail,
 } from "./emails";
-import { fmtDay, TIME_ZONE } from "./format";
+import { TIME_ZONE, fmtDay } from "./format";
 import { sendMail } from "./mail";
-import { alertRecipient, getSettings, isOn, num, type Settings } from "./settings";
+import { type Settings, alertRecipient, getSettings, isOn, num } from "./settings";
 
 type Delivery = {
   trigger: string;
@@ -24,12 +24,33 @@ type Delivery = {
   build: () => BuiltEmail | Promise<BuiltEmail>;
 };
 
+const UNCAPPED = new Set(["form_submitted", "daily_digest"]);
+
 /**
  * Sends one email and logs it. The unique dedupe key is claimed first,
  * so the same email can never go out twice, even if two requests race.
  */
 export async function deliver(d: Delivery) {
   const to = d.to || alertRecipient(d.settings);
+
+  // Safety valve against floods: no more than N alert emails per hour in total.
+  // Leads, the daily digest and test emails always go through.
+  if (!UNCAPPED.has(d.trigger)) {
+    const cap = num(d.settings, "max_emails_per_hour", 1, 1000);
+    const [{ count }] = await db()`
+      SELECT count(*)::int AS count FROM notifications
+      WHERE sent_at > now() - interval '1 hour' AND status IN ('sent', 'pending')`;
+    if (count >= cap) {
+      await db()`
+        INSERT INTO notifications
+          (session_id, visitor_id, trigger_type, dedupe_key, recipient, reason, status, error)
+        VALUES (${d.sessionId ?? null}, ${d.visitorId ?? null}, ${d.trigger}, ${d.dedupeKey}, ${to},
+                ${d.reason}, 'skipped', ${`Not sent: the limit of ${cap} alert emails per hour was reached`})
+        ON CONFLICT (dedupe_key) DO NOTHING`;
+      return false;
+    }
+  }
+
   const claimed = await db()`
     INSERT INTO notifications (session_id, visitor_id, trigger_type, dedupe_key, recipient, reason)
     VALUES (${d.sessionId ?? null}, ${d.visitorId ?? null}, ${d.trigger}, ${d.dedupeKey}, ${to}, ${d.reason})
@@ -104,7 +125,9 @@ export async function checkHighInterest(session: Row, origin: string) {
   if (pricingPaths.length) {
     const pages = await db()`SELECT DISTINCT path FROM pageviews WHERE session_id = ${session.id}`;
     const hit = pages.find((p) =>
-      pricingPaths.some((pp) => p.path.toLowerCase() === pp || p.path.toLowerCase().startsWith(`${pp}/`)),
+      pricingPaths.some(
+        (pp) => p.path.toLowerCase() === pp || p.path.toLowerCase().startsWith(`${pp}/`),
+      ),
     );
     if (hit) reasons.push(`opened the pricing page (${hit.path})`);
   }
@@ -125,13 +148,54 @@ export async function checkHighInterest(session: Row, origin: string) {
 }
 
 /**
- * Triggers 4 and 6. Closes sessions with no activity for N minutes and sends
- * "form abandoned" and "visit summary" emails for Instagram sessions.
+ * Triggers 4 and 6 for one finished Instagram session: "form started but not
+ * sent" and the visit summary. Returns how many emails went out.
+ */
+async function sendSessionEndEmails(s: Row, settings: Settings, origin: string, why: string) {
+  if (s.source !== "instagram") return 0;
+  // Visits that ended long ago get no separate email: the daily digest covers them.
+  if (Date.now() - new Date(s.ended_at).getTime() > 3 * 3_600_000) return 0;
+
+  let emails = 0;
+  if (s.form_started && !s.converted && isOn(settings, "trigger_form_abandoned")) {
+    const ok = await deliver({
+      trigger: "form_abandoned",
+      dedupeKey: `${s.id}:form_abandoned`,
+      sessionId: s.id,
+      visitorId: s.visitor_id,
+      reason: "Started the contact form but did not send it",
+      settings,
+      build: () => formAbandonedEmail(s, origin),
+    });
+    if (ok) emails++;
+  }
+
+  if (isOn(settings, "trigger_session_summary")) {
+    const ok = await deliver({
+      trigger: "session_summary",
+      dedupeKey: `${s.id}:session_summary`,
+      sessionId: s.id,
+      visitorId: s.visitor_id,
+      reason: why,
+      settings,
+      build: async () => {
+        const [pageviews, events] = await Promise.all([
+          db()`SELECT * FROM pageviews WHERE session_id = ${s.id} ORDER BY entered_at`,
+          db()`SELECT * FROM events WHERE session_id = ${s.id} ORDER BY created_at`,
+        ]);
+        return summaryEmail(s, pageviews, events, origin);
+      },
+    });
+    if (ok) emails++;
+  }
+  return emails;
+}
+
+/**
+ * Closes sessions with no activity for N minutes and sends their emails.
  *
  * Runs from the cron job, and also whenever any tracking request or admin page
  * load happens, because the Vercel Hobby plan only allows one cron run per day.
- * Sessions that ended more than 3 hours ago get no separate email: they are
- * covered by the daily digest.
  */
 export async function closeStaleSessions(origin: string) {
   const settings = await getSettings();
@@ -149,43 +213,34 @@ export async function closeStaleSessions(origin: string) {
 
   let emails = 0;
   for (const s of closed) {
-    if (s.source !== "instagram") continue;
-    const hoursAgo = (Date.now() - new Date(s.ended_at).getTime()) / 3_600_000;
-    if (hoursAgo > 3) continue;
-
-    if (s.form_started && !s.converted && isOn(settings, "trigger_form_abandoned")) {
-      const ok = await deliver({
-        trigger: "form_abandoned",
-        dedupeKey: `${s.id}:form_abandoned`,
-        sessionId: s.id,
-        visitorId: s.visitor_id,
-        reason: "Started the contact form but did not send it",
-        settings,
-        build: () => formAbandonedEmail(s, origin),
-      });
-      if (ok) emails++;
-    }
-
-    if (isOn(settings, "trigger_session_summary")) {
-      const ok = await deliver({
-        trigger: "session_summary",
-        dedupeKey: `${s.id}:session_summary`,
-        sessionId: s.id,
-        visitorId: s.visitor_id,
-        reason: `Visit ended (no activity for ${timeout} minutes)`,
-        settings,
-        build: async () => {
-          const [pageviews, events] = await Promise.all([
-            db()`SELECT * FROM pageviews WHERE session_id = ${s.id} ORDER BY entered_at`,
-            db()`SELECT * FROM events WHERE session_id = ${s.id} ORDER BY created_at`,
-          ]);
-          return summaryEmail(s, pageviews, events, origin);
-        },
-      });
-      if (ok) emails++;
-    }
+    emails += await sendSessionEndEmails(
+      s,
+      settings,
+      origin,
+      `Visit ended (no activity for ${timeout} minutes)`,
+    );
   }
   return { closed: closed.length, emails };
+}
+
+/**
+ * The browser said the visitor left the site (page closed). If nothing more
+ * has happened since, end the visit now and send the summary straight away
+ * instead of waiting for the inactivity timeout. If the visitor comes back
+ * within the timeout, the same visit is simply reopened.
+ */
+export async function closeSessionAfterLeaving(
+  sessionId: string,
+  origin: string,
+  quietSeconds: number,
+) {
+  const [s] = await db()`
+    UPDATE sessions SET ended_at = last_activity_at
+    WHERE id = ${sessionId} AND ended_at IS NULL
+      AND last_activity_at < now() - (${quietSeconds}::int * interval '1 second')
+    RETURNING *`;
+  if (!s) return;
+  await sendSessionEndEmails(s, await getSettings(), origin, "The visitor left the site");
 }
 
 function topCounts(rows: Row[], pick: (r: Row) => string | null, limit = 8) {
@@ -230,20 +285,21 @@ export async function sendDailyDigest(origin: string) {
   if (!sessions.length && !anonymous[0].count) return { sent: false, why: "no visitors" };
 
   const visitorIds = new Set(sessions.map((s) => s.visitor_id));
-  const returningIds = new Set(sessions.filter((s) => s.is_returning).map((s) => s.visitor_id));
+  // A visitor is new when their very first visit happened on this day.
+  const newIds = new Set(sessions.filter((s) => !s.is_returning).map((s) => s.visitor_id));
   const data: DigestData = {
     dayLabel: fmtDay(`${day}T12:00:00Z`),
     sessions,
     visitors: visitorIds.size,
-    newVisitors: visitorIds.size - returningIds.size,
-    returningVisitors: returningIds.size,
+    newVisitors: newIds.size,
+    returningVisitors: visitorIds.size - newIds.size,
     anonymous: anonymous[0].count,
     leads,
     countries: topCounts(sessions, (s) => s.country),
     cities: topCounts(sessions, (s) => s.city),
     pages,
     devices: topCounts(sessions, (s) =>
-      [s.device_type, s.os].filter(Boolean).join(" · "),
+      [s.device_type === "mobile" ? "Phone" : s.device_type, s.os].filter(Boolean).join(" · "),
     ),
     placements: topCounts(sessions, (s) => s.ig_placement || "unknown"),
     abandoned: sessions.filter((s) => s.form_started && !s.converted).length,
@@ -272,5 +328,6 @@ export async function purgeOldData() {
     RETURNING id`;
   await db()`DELETE FROM notifications WHERE sent_at < now() - (${days}::int * interval '1 day')`;
   await db()`DELETE FROM anonymous_visits WHERE created_at < now() - (${days}::int * interval '1 day')`;
+  await db()`DELETE FROM admin_login_attempts WHERE attempted_at < now() - interval '1 day'`;
   return { days, sessions: sessions.length, visitors: visitors.length };
 }

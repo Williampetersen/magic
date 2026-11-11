@@ -94,12 +94,44 @@ const IPHONE_MODELS: Record<string, string> = {
   "iPhone17,5": "iPhone 16e",
 };
 
+/** Samsung sends a product code. These are the common recent phones. */
+const GALAXY_MODELS: Record<string, string> = {
+  "SM-S938": "Galaxy S25 Ultra",
+  "SM-S936": "Galaxy S25+",
+  "SM-S931": "Galaxy S25",
+  "SM-S928": "Galaxy S24 Ultra",
+  "SM-S926": "Galaxy S24+",
+  "SM-S921": "Galaxy S24",
+  "SM-S918": "Galaxy S23 Ultra",
+  "SM-S916": "Galaxy S23+",
+  "SM-S911": "Galaxy S23",
+  "SM-S908": "Galaxy S22 Ultra",
+  "SM-S906": "Galaxy S22+",
+  "SM-S901": "Galaxy S22",
+  "SM-G998": "Galaxy S21 Ultra",
+  "SM-G996": "Galaxy S21+",
+  "SM-G991": "Galaxy S21",
+  "SM-A566": "Galaxy A56",
+  "SM-A556": "Galaxy A55",
+  "SM-A546": "Galaxy A54",
+  "SM-A536": "Galaxy A53",
+  "SM-A528": "Galaxy A52s",
+  "SM-A366": "Galaxy A36",
+  "SM-A356": "Galaxy A35",
+  "SM-A346": "Galaxy A34",
+  "SM-A256": "Galaxy A25",
+  "SM-A166": "Galaxy A16",
+  "SM-A156": "Galaxy A15",
+};
+
 export function parseUserAgent(ua: string) {
   const r = new UAParser(ua).getResult();
   let model = r.device.model || null;
   // The Instagram app adds the exact Apple hardware id, e.g. "(iPhone14,5; iOS 17_0; ...)"
   const apple = ua.match(/Instagram [\d.]+ \((iP(?:hone|ad)\d+,\d+)/);
   if (apple) model = IPHONE_MODELS[apple[1]] || `${model || "Apple"} (${apple[1]})`;
+  const galaxy = model ? GALAXY_MODELS[model.slice(0, 7)] : undefined;
+  if (galaxy) model = `${galaxy} (${model})`;
   return {
     device_type: r.device.type || "desktop",
     device_vendor: r.device.vendor || null,

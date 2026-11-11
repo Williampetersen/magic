@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { db, insertRow, type Row } from "./db";
+import { type Row, db, insertRow } from "./db";
 import {
   clientIp,
   clip,
@@ -14,11 +14,21 @@ import {
   parseUserAgent,
   parseUtm,
 } from "./detect";
-import { checkHighInterest, closeStaleSessions, notifyArrival } from "./notify";
+import {
+  checkHighInterest,
+  closeSessionAfterLeaving,
+  closeStaleSessions,
+  notifyArrival,
+} from "./notify";
 import { getSettings, num } from "./settings";
 
 export const VISITOR_COOKIE = "tw_vid";
 export const SESSION_COOKIE = "tw_sid";
+
+const MAX_SESSIONS_PER_NETWORK_PER_HOUR = 40;
+const MAX_PAGES_PER_SESSION = 300;
+/** How long after the page was closed the visit is ended and summarised. */
+const LEAVE_GRACE_SECONDS = 45;
 
 export type TrackContext = {
   headers: Headers;
@@ -68,7 +78,16 @@ async function startSession(ctx: TrackContext, body: Body, path: string) {
   const ipHash = hashIp(ip);
   const source = instagram ? "instagram" : "other";
 
-  // Find the visitor: by cookie first, then by the same IP hash + browser.
+  // Flood guard: one network cannot open an endless number of visits.
+  if (ipHash) {
+    const [{ count }] = await db()`
+      SELECT count(*)::int AS count FROM sessions
+      WHERE ip_hash = ${ipHash} AND started_at > now() - interval '1 hour'`;
+    if (count >= MAX_SESSIONS_PER_NETWORK_PER_HOUR) return null;
+  }
+
+  // Find the visitor: by cookie first, then by the same IP hash and the exact
+  // same browser within the last 30 days (the Instagram app often drops cookies).
   let visitor: Row | undefined;
   if (ctx.vid) {
     [visitor] = await db()`SELECT * FROM visitors WHERE id = ${ctx.vid}`;
@@ -76,7 +95,8 @@ async function startSession(ctx: TrackContext, body: Body, path: string) {
   if (!visitor && ipHash) {
     [visitor] = await db()`
       SELECT v.* FROM sessions s JOIN visitors v ON v.id = s.visitor_id
-      WHERE s.ip_hash = ${ipHash} AND s.user_agent = ${ctx.ua}
+      WHERE s.ip_hash = ${ipHash} AND s.user_agent = ${ctx.ua.slice(0, 600)}
+        AND s.started_at > now() - interval '30 days'
       ORDER BY s.started_at DESC LIMIT 1`;
   }
   if (visitor) {
@@ -133,14 +153,20 @@ export async function recordPageview(ctx: TrackContext, body: Body) {
   let newSessionIp: string | null | undefined;
 
   if (ctx.sid && ctx.vid) {
-    const [open] = await db()`
-      SELECT id FROM sessions
-      WHERE id = ${ctx.sid} AND visitor_id = ${ctx.vid} AND ended_at IS NULL
+    // Also matches a visit that was closed early because the page was closed:
+    // coming back within the timeout continues the same visit.
+    const [current] = await db()`
+      SELECT id, page_count FROM sessions
+      WHERE id = ${ctx.sid} AND visitor_id = ${ctx.vid}
         AND last_activity_at > now() - (${timeout}::int * interval '1 minute')`;
-    if (open) sessionId = open.id;
+    if (current) {
+      if (current.page_count >= MAX_PAGES_PER_SESSION) return null;
+      sessionId = current.id;
+    }
   }
   if (!sessionId) {
     const started = await startSession(ctx, body, path);
+    if (!started) return null;
     sessionId = started.id;
     visitorId = started.visitorId;
     newSessionIp = started.ip;
@@ -152,7 +178,7 @@ export async function recordPageview(ctx: TrackContext, body: Body) {
     ON CONFLICT (id) DO NOTHING`;
   const [session] = await db()`
     UPDATE sessions
-    SET page_count = page_count + 1, exit_page = ${path}, last_activity_at = now()
+    SET page_count = page_count + 1, exit_page = ${path}, last_activity_at = now(), ended_at = NULL
     WHERE id = ${sessionId} RETURNING *`;
 
   const isNew = newSessionIp !== undefined;
@@ -199,8 +225,19 @@ export async function recordPing(ctx: TrackContext, body: Body) {
         )
     WHERE id = ${ctx.sid} RETURNING *`;
 
-  const background: Background = () => checkHighInterest(session, ctx.origin);
-  return { expired: false, background: session.high_interest ? null : background };
+  // f = 1: the page is being closed (the browser's "pagehide" event).
+  const leaving = body.f === 1;
+  if (!leaving && session.high_interest) return { expired: false, background: null };
+
+  const background: Background = async () => {
+    await checkHighInterest(session, ctx.origin);
+    if (leaving) {
+      // Wait a moment: a reload or a quick return must not end the visit.
+      await new Promise((resolve) => setTimeout(resolve, LEAVE_GRACE_SECONDS * 1000));
+      await closeSessionAfterLeaving(session.id, ctx.origin, LEAVE_GRACE_SECONDS - 5);
+    }
+  };
+  return { expired: false, background };
 }
 
 const EVENT_TYPES = new Set([
