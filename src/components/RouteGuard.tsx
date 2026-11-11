@@ -76,6 +76,11 @@ const RouteGuard: React.FC<RouteGuardProps> = ({ children }) => {
     }
   };
 
+  // The admin area has its own login and layout.
+  if (pathname?.startsWith("/admin")) {
+    return <>{children}</>;
+  }
+
   if (loading) {
     return (
       <Flex fillWidth paddingY="128" horizontal="center">

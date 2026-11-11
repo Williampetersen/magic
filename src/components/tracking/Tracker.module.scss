@@ -1,0 +1,25 @@
+.banner {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  width: calc(100% - 32px);
+  max-width: 520px;
+  z-index: 12;
+  backdrop-filter: blur(16px);
+}
+
+.actions > * {
+  min-width: 96px;
+}
+
+/* On phones the site navigation sits at the bottom of the screen. */
+@media (max-width: 768px) {
+  .banner {
+    bottom: 88px;
+  }
+
+  .actions > * {
+    flex: 1;
+  }
+}
