@@ -18,6 +18,15 @@ const nextConfig = {
       },
     ],
   },
+  async headers() {
+    return [
+      {
+        // Keep the private dashboard out of search engines.
+        source: "/admin/:path*",
+        headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }],
+      },
+    ];
+  },
   sassOptions: {
     compiler: "modern",
     silenceDeprecations: ["legacy-js-api"],
