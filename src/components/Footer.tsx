@@ -28,6 +28,10 @@ export const Footer = () => {
             / Build your portfolio with{" "}
             <SmartLink href="https://www.trustwebads.com/">Trust Web Ads</SmartLink>
           </Text>
+          <Text onBackground="neutral-weak" paddingX="4">
+            /
+          </Text>
+          <SmartLink href="/privacy">Privacy</SmartLink>
         </Text>
         <Row gap="16">
           {social.map(

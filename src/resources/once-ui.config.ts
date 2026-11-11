@@ -26,7 +26,7 @@ const routes: RoutesConfig = {
   "/web-design": true,
   "/seo": true,
   "/email-marketing": true,
-  
+  "/privacy": true,
 };
 
 const display: DisplayConfig = {
