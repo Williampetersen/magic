@@ -1,5 +1,12 @@
-import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { type NextRequest, NextResponse } from "next/server";
+import { hasDb } from "@/lib/tracking/db";
+import { isUuid } from "@/lib/tracking/detect";
+import { type LeadInput, leadEmail } from "@/lib/tracking/emails";
+import { type LeadTracking, saveLead } from "@/lib/tracking/leads";
+import { escapeHtml, sendMail } from "@/lib/tracking/mail";
+import { deliver } from "@/lib/tracking/notify";
+import { getSettings, isOn, siteOrigin } from "@/lib/tracking/settings";
+import { SESSION_COOKIE, VISITOR_COOKIE } from "@/lib/tracking/track";
 
 type ContactPayload = {
   firstName: string;
@@ -10,15 +17,9 @@ type ContactPayload = {
   plan: string;
 };
 
-function requiredEnv(name: string) {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Missing ${name} environment variable.`);
-  }
-  return value;
-}
+const clean = (value: string) => value.trim().slice(0, 200);
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
     const body = (await request.json()) as Partial<ContactPayload>;
 
@@ -33,78 +34,84 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields." }, { status: 400 });
     }
 
-    const smtpHost = requiredEnv("SMTP_HOST");
-    const smtpPort = Number(requiredEnv("SMTP_PORT"));
-    const smtpUser = requiredEnv("SMTP_USER");
-    const smtpPass = requiredEnv("SMTP_PASS");
-    const smtpFrom = process.env.SMTP_FROM || smtpUser;
+    const firstName = clean(body.firstName);
+    const lead: LeadInput = {
+      name: `${firstName} ${clean(body.lastName)}`,
+      email: clean(body.email),
+      phone: clean(body.phone),
+      service: clean(body.service),
+      plan: clean(body.plan),
+    };
     const contactTo = process.env.CONTACT_TO || "williampetersencop@gmail.com";
+    const origin = siteOrigin(request.nextUrl.origin);
 
-    const transporter = nodemailer.createTransport({
-      host: smtpHost,
-      port: smtpPort,
-      secure: smtpPort === 465,
-      auth: {
-        user: smtpUser,
-        pass: smtpPass,
-      },
-    });
+    // Save the lead and link it to the visitor. The form must keep working
+    // even if tracking or the database has a problem.
+    let leadId: number | null = null;
+    let tracking: LeadTracking | null = null;
+    let settings = null;
+    if (hasDb()) {
+      try {
+        const vid = request.cookies.get(VISITOR_COOKIE)?.value;
+        const sid = request.cookies.get(SESSION_COOKIE)?.value;
+        const saved = await saveLead(isUuid(vid) ? vid : null, isUuid(sid) ? sid : null, lead);
+        leadId = saved.leadId;
+        tracking = saved.tracking;
+        settings = await getSettings();
+      } catch (err) {
+        console.error("contact: tracking failed", err);
+      }
+    }
 
-    const subject = `New lead: ${body.firstName} ${body.lastName} (${body.service})`;
-    const text = [
-      `Name: ${body.firstName} ${body.lastName}`,
-      `Email: ${body.email}`,
-      `Phone: ${body.phone}`,
-      `Service: ${body.service}`,
-      `Plan: ${body.plan}`,
-    ].join("\n");
+    // The "hot lead" switch in the admin controls whether tracking details are added.
+    const includeTracking = settings ? isOn(settings, "trigger_form_submitted") : true;
+    const mail = leadEmail(lead, includeTracking ? tracking : null, origin);
 
-    const html = `
-      <h2>New Contact Request</h2>
-      <p><strong>Name:</strong> ${body.firstName} ${body.lastName}</p>
-      <p><strong>Email:</strong> ${body.email}</p>
-      <p><strong>Phone:</strong> ${body.phone}</p>
-      <p><strong>Service:</strong> ${body.service}</p>
-      <p><strong>Plan:</strong> ${body.plan}</p>
-    `;
+    let sent = false;
+    if (leadId && settings) {
+      try {
+        sent = await deliver({
+          trigger: "form_submitted",
+          dedupeKey: `lead:${leadId}`,
+          sessionId: tracking?.session.id,
+          visitorId: tracking?.session.visitor_id,
+          reason: `Contact form submitted by ${lead.name}`,
+          settings,
+          to: contactTo,
+          replyTo: lead.email,
+          build: () => mail,
+        });
+      } catch (err) {
+        console.error("contact: notification log failed", err);
+      }
+    }
+    if (!sent) {
+      await sendMail({ to: contactTo, replyTo: lead.email, ...mail });
+    }
 
-    await transporter.sendMail({
-      from: smtpFrom,
-      to: contactTo,
-      replyTo: body.email,
-      subject,
-      text,
-      html,
-    });
-
-    const customerSubject = `Thanks, ${body.firstName}! I received your request`;
-    const customerText = [
-      `Hi ${body.firstName},`,
-      "",
-      "Thanks for reaching out. I received your request and will contact you within the next 8 hours.",
-      "",
-      "Summary:",
-      `Service: ${body.service}`,
-      `Plan: ${body.plan}`,
-      "",
-      "Talk soon,",
-      "Trust Web Ads",
-    ].join("\n");
-
-    const customerHtml = `
-      <p>Hi ${body.firstName},</p>
+    const safeName = escapeHtml(firstName);
+    await sendMail({
+      to: lead.email,
+      subject: `Thanks, ${firstName}! I received your request`,
+      text: [
+        `Hi ${firstName},`,
+        "",
+        "Thanks for reaching out. I received your request and will contact you within the next 8 hours.",
+        "",
+        "Summary:",
+        `Service: ${lead.service}`,
+        `Plan: ${lead.plan}`,
+        "",
+        "Talk soon,",
+        "Trust Web Ads",
+      ].join("\n"),
+      html: `
+      <p>Hi ${safeName},</p>
       <p>Thanks for reaching out. I received your request and will contact you within the next 8 hours.</p>
       <p><strong>Summary</strong></p>
-      <p>Service: ${body.service}<br />Plan: ${body.plan}</p>
+      <p>Service: ${escapeHtml(lead.service)}<br />Plan: ${escapeHtml(lead.plan)}</p>
       <p>Talk soon,<br />Trust Web Ads</p>
-    `;
-
-    await transporter.sendMail({
-      from: smtpFrom,
-      to: body.email,
-      subject: customerSubject,
-      text: customerText,
-      html: customerHtml,
+    `,
     });
 
     return NextResponse.json({ ok: true });
