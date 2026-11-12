@@ -5,6 +5,7 @@ import {
   fmtDuration,
   fmtTime,
   locationLabel,
+  nearestAddress,
   placementLabel,
   sourceLabel,
 } from "./format";
@@ -120,6 +121,12 @@ const COLORS = {
   digest: "#0891b2",
 };
 
+/** The road nearest to the visit's coordinates, when it has been looked up. */
+function nearestAddressRow(s: Row): [string, string][] {
+  const address = nearestAddress(s);
+  return address ? [["Nearest address", `${address} (approximate)`]] : [];
+}
+
 export function visitorFacts(s: Row, previousVisit?: string | Date | null): [string, string][] {
   const rows: [string, string][] = [
     ["Time", fmtDateTime(s.started_at)],
@@ -131,6 +138,7 @@ export function visitorFacts(s: Row, previousVisit?: string | Date | null): [str
     ],
     ["Landing page", s.landing_page || "/"],
     ["Location", locationLabel(s)],
+    ...nearestAddressRow(s),
     ["Device", deviceLabel(s)],
     ["Instagram in-app browser", s.is_instagram_in_app_browser ? "Yes" : "No"],
     ["Language", s.language || "Unknown"],
@@ -416,6 +424,7 @@ export function leadEmail(
       rows: [
         ["Source", `Came from ${sourceLabel(s)}`],
         ["Location", locationLabel(s)],
+        ...nearestAddressRow(s),
         ["Device", deviceLabel(s)],
         ["Earlier visits", String(tracking.earlierVisits)],
         ["Time on site", fmtDuration(s.duration_seconds)],

@@ -12,10 +12,13 @@ import {
   fmtDateTime,
   fmtDuration,
   fmtTime,
+  googleMapsUrl,
   locationLabel,
+  nearestAddress,
   placementLabel,
   sourceLabel,
 } from "@/lib/tracking/format";
+import { addNearestAddress } from "@/lib/tracking/geocode";
 import { getVisitor } from "@/lib/tracking/queries";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -24,6 +27,7 @@ import {
   LuChevronLeft,
   LuChevronRight,
   LuCircleCheck,
+  LuExternalLink,
   LuFileText,
   LuFlame,
   LuLogIn,
@@ -36,13 +40,28 @@ import {
 import { deleteVisitorAction } from "../../../actions";
 import styles from "../../../admin.module.scss";
 
-function Def({ label, children }: { label: string; children: ReactNode }) {
+function Def({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) {
   const empty = children === null || children === undefined || children === "";
   return (
-    <div className={styles.def}>
+    <div className={cx(styles.def, wide && styles.defWide)}>
       <dt>{label}</dt>
       <dd className={empty ? styles.muted : undefined}>{empty ? "–" : children}</dd>
     </div>
+  );
+}
+
+/** Opens the visit's coordinates in Google Maps, in a new tab. */
+function GoogleMapsLink({ session }: { session: Row }) {
+  return (
+    <a
+      className={styles.extLink}
+      href={googleMapsUrl(session.latitude, session.longitude)}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      Open in Google Maps
+      <LuExternalLink aria-hidden />
+    </a>
   );
 }
 
@@ -163,6 +182,9 @@ export default async function VisitorPage({
   const { visit } = await searchParams;
 
   const latest: Row | undefined = sessions[0];
+  // Visits from before the address lookup existed (or where it failed) get it now.
+  await addNearestAddress(latest);
+  const address = latest ? nearestAddress(latest) : null;
   const instagram = sessions.find((s) => s.source === "instagram") ?? latest;
   const totalPages = sessions.reduce((sum, s) => sum + s.page_count, 0);
   const totalSeconds = sessions.reduce((sum, s) => sum + s.duration_seconds, 0);
@@ -306,8 +328,14 @@ export default async function VisitorPage({
           ) : (
             <p className={styles.sub}>No coordinates for this visit.</p>
           )}
+          {hasMap && (
+            <p className={styles.mapNote}>
+              <GoogleMapsLink session={latest} />
+            </p>
+          )}
           <dl className={cx(styles.defs, styles.defs1)} style={{ marginTop: 12 }}>
             <Def label="Place">{latest ? locationLabel(latest) : null}</Def>
+            <Def label="Nearest address">{address}</Def>
             <Def label="Local time zone">{latest?.timezone}</Def>
             <Def label="Provider">{latest?.isp}</Def>
             <Def label="IP (masked)">{latest?.ip_masked}</Def>
@@ -348,9 +376,25 @@ export default async function VisitorPage({
               <Def label="City">{latest.city}</Def>
               <Def label="Postal code">{latest.postal_code}</Def>
               <Def label="Coordinates">
-                {hasMap ? `${latest.latitude}, ${latest.longitude}` : null}
+                {hasMap ? (
+                  <>
+                    {latest.latitude}, {latest.longitude} · <GoogleMapsLink session={latest} />
+                  </>
+                ) : null}
               </Def>
               <Def label="Timezone">{latest.timezone}</Def>
+              <Def label="Nearest address" wide>
+                {address ? (
+                  <>
+                    {address}
+                    <small className={styles.defNote}>
+                      The road, postal code and city nearest to the coordinates (from
+                      OpenStreetMap). The coordinates come from the IP address and often mark the
+                      centre of the city, so this is an area, not the visitor’s home address.
+                    </small>
+                  </>
+                ) : null}
+              </Def>
               <Def label="IP (masked)">{latest.ip_masked}</Def>
               <Def label="IP fingerprint">
                 {latest.ip_hash ? `${latest.ip_hash.slice(0, 16)}…` : null}

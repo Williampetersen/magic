@@ -91,6 +91,18 @@ export function locationLabel(s: Row) {
   return [s.city, region, s.country].filter(Boolean).join(", ") || "Unknown location";
 }
 
+/**
+ * "Jernbanegade, 1609 Copenhagen": the road nearest to the visit's coordinates.
+ * Approximate, because the coordinates come from the IP address.
+ */
+export function nearestAddress(s: Row) {
+  const town = [s.near_postcode, s.near_city].filter(Boolean).join(" ");
+  return [s.near_road, town].filter(Boolean).join(", ") || null;
+}
+
+export const googleMapsUrl = (latitude: number, longitude: number) =>
+  `https://www.google.com/maps/search/?api=1&query=${latitude}%2C${longitude}`;
+
 /** "iPhone 13", "Samsung Galaxy S23 Ultra", "Mac", "Windows computer" */
 export function deviceName(s: Row) {
   if (s.device_model === "Macintosh") return "Mac";

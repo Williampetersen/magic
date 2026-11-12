@@ -158,6 +158,7 @@ https://YOURDOMAIN/api/cron/session-summaries
 
 - Your own visits are not recorded while you are logged in to `/admin` in the same browser. To test, use a private window or open a tagged link from the Instagram app.
 - Bots and link previews are ignored.
+- **Nearest address.** Vercel gives approximate coordinates for each visitor's IP address. The site looks up the road, postal code and city nearest to that point with OpenStreetMap (free, no key; only the coordinates are sent) and shows it on the visitor page, in the emails and in the CSV export. It is an area, not the visitor's home: the coordinates often mark the centre of the city, so many visitors from one city get the same road. A point is looked up once and the answer is reused.
 - `/admin` is hidden from search engines (`noindex`, `robots.txt`) and is not in the sitemap.
 - Scheduled jobs are defined in `vercel.json`. Functions run in Frankfurt (`fra1`), next to the database.
 

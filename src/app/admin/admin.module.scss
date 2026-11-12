@@ -1593,6 +1593,37 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
+/* A row that runs across both columns. */
+.defWide {
+  grid-column: 1 / -1;
+}
+
+.defNote {
+  display: block;
+  margin-top: 2px;
+  max-width: 68ch;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--adm-muted);
+}
+
+/* Link that opens another website in a new tab. */
+.extLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--adm-accent);
+}
+
+.extLink:hover {
+  text-decoration: underline;
+}
+
+.extLink svg {
+  width: 12px;
+  height: 12px;
+}
+
 .groupTitle {
   margin: 18px 0 6px;
   font-size: 12px;
@@ -2335,6 +2366,7 @@ a.logRow:hover {
 }
 
 .root .mapNote a,
+.root .extLink,
 .root .leadContact a:hover {
   color: var(--adm-accent);
 }

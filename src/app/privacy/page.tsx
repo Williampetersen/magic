@@ -82,7 +82,7 @@ export default async function PrivacyPage() {
           items={[
             "Pages you view, time spent on each page, how far you scroll, and which buttons and links you click.",
             "Where you came from: the referring website and campaign tags in the link (for example an Instagram story or bio link).",
-            "Approximate location from your IP address: country, region, city and postal code. This is the location of your internet connection, not your exact position.",
+            "Approximate location from your IP address: country, region, city, postal code and the road nearest to that point. This is the location of your internet connection, not your exact position.",
             "Device details sent by your browser: device type and model, operating system, browser, language, screen size and connection type, and the name of your internet provider.",
             "A shortened IP address (for example 85.191.xxx.xxx) and a one-way encrypted fingerprint of the IP address. The full IP address is never stored.",
             "Whether you started or sent the contact form.",
@@ -138,9 +138,10 @@ export default async function PrivacyPage() {
         <P>
           The data is not sold and not used for advertising. It is processed by the service
           providers that run this website: Vercel (hosting), Neon (database, stored in the EU) and
-          the email provider used to send notifications. If the optional internet-provider lookup is
-          active, your IP address is sent to IPinfo for that lookup and is not stored by this
-          website.
+          the email provider used to send notifications. To name the nearest road, the approximate
+          coordinates of your internet connection (not your IP address) are sent to the address
+          search of OpenStreetMap. If the optional internet-provider lookup is active, your IP
+          address is sent to IPinfo for that lookup and is not stored by this website.
         </P>
       </Section>
 

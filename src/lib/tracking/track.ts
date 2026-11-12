@@ -14,6 +14,7 @@ import {
   parseUserAgent,
   parseUtm,
 } from "./detect";
+import { addNearestAddress } from "./geocode";
 import {
   checkHighInterest,
   closeSessionAfterLeaving,
@@ -225,7 +226,11 @@ export async function recordPageview(ctx: TrackContext, body: Body) {
   const isNew = newSessionIp !== undefined;
   const background: Background = async () => {
     if (isNew) {
-      const net = await lookupIsp(newSessionIp ?? null);
+      // Both lookups finish before the arrival email, so it can include them.
+      const [net] = await Promise.all([
+        lookupIsp(newSessionIp ?? null),
+        addNearestAddress(session),
+      ]);
       if (net?.isp) {
         session.isp = net.isp;
         session.connection_type = session.connection_type || net.network;
