@@ -36,6 +36,9 @@ const PLACEMENTS = [
   },
 ];
 
+/** Short address that forwards to the tagged bio link. Set up in next.config.mjs. */
+const SHORT_BIO_PATH = "/dk";
+
 const slugify = (text: string) =>
   text
     .trim()
@@ -54,6 +57,7 @@ export function LinkBuilder({ pages, defaultBase }: { pages: string[]; defaultBa
   }, [defaultBase]);
 
   const slug = slugify(campaign);
+  const shortBio = `${base.replace(/\/+$/, "")}${SHORT_BIO_PATH}`;
 
   const build = (medium: string, withCampaign: boolean) => {
     try {
@@ -106,6 +110,17 @@ export function LinkBuilder({ pages, defaultBase }: { pages: string[]; defaultBa
       </div>
 
       <div style={{ marginTop: 18 }}>
+        <div className={styles.linkRow}>
+          <div className={styles.cellStack}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
+              <span className={styles.swatch} style={{ background: "var(--series-1)" }} />
+              Bio link, short
+            </span>
+            <small>Opens the home page and counts as the bio link</small>
+          </div>
+          <div className={styles.linkUrl}>{shortBio}</div>
+          <CopyButton text={shortBio} />
+        </div>
         {PLACEMENTS.map((p) => {
           const url = build(p.medium, p.campaign);
           return (

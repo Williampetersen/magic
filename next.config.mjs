@@ -18,6 +18,18 @@ const nextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [
+      {
+        // Short link for the Instagram bio. It forwards to the home page with
+        // the bio tag, so the visit is recorded as "Instagram · Bio link".
+        // Also listed in the admin link builder (SHORT_BIO_PATH).
+        source: "/dk",
+        destination: "/?utm_source=instagram&utm_medium=bio",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
