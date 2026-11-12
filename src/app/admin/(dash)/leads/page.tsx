@@ -101,7 +101,7 @@ export default async function LeadsPage() {
                       <Badge>{fmtDuration(lead.duration_seconds)} on site</Badge>
                     </>
                   ) : (
-                    <Badge title="This person did not accept cookies, so their visit was not tracked.">
+                    <Badge title="No visit could be matched to this request, for example because a tracking blocker was used.">
                       No tracking details
                     </Badge>
                   )}

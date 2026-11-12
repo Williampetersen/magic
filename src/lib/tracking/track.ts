@@ -57,7 +57,37 @@ function externalReferrer(raw: unknown, host: string | null) {
   }
 }
 
-/** Before or without consent: count the visit, store nothing about the person. */
+export async function sessionBelongsTo(sessionId: string, visitorId: string) {
+  const rows = await db()`
+    SELECT 1 FROM sessions WHERE id = ${sessionId} AND visitor_id = ${visitorId}`;
+  return rows.length > 0;
+}
+
+/**
+ * For visitors without cookies: the visit that is still running from the same
+ * network (IP hash) and the exact same browser.
+ */
+export async function recentSessionFor(headers: Headers, minutes: number) {
+  const ipHash = hashIp(clientIp(headers));
+  if (!ipHash) return null;
+  const ua = (headers.get("user-agent") || "").slice(0, 600);
+  const [row] = await db()`
+    SELECT id, visitor_id, page_count FROM sessions
+    WHERE ip_hash = ${ipHash} AND user_agent = ${ua}
+      AND last_activity_at > now() - (${minutes}::int * interval '1 minute')
+    ORDER BY last_activity_at DESC LIMIT 1`;
+  if (!row) return null;
+  return {
+    sid: row.id as string,
+    vid: row.visitor_id as string,
+    pageCount: row.page_count as number,
+  };
+}
+
+/**
+ * Count-only record. No longer sent by the current tracker (every visit is now
+ * recorded in full, without cookies); kept for pages still open from before.
+ */
 export async function recordAnonymous(ctx: TrackContext, body: Body) {
   const utm = parseUtm(clip(body.search, 600));
   const referrer = externalReferrer(body.referrer, ctx.headers.get("host"));
@@ -162,6 +192,17 @@ export async function recordPageview(ctx: TrackContext, body: Body) {
     if (current) {
       if (current.page_count >= MAX_PAGES_PER_SESSION) return null;
       sessionId = current.id;
+    }
+  }
+  if (!sessionId && !ctx.sid && !ctx.vid) {
+    // No cookies and a fresh page load (the IDs kept in memory are gone):
+    // the same network and the exact same browser within the timeout is the
+    // same visit continuing, not a new one.
+    const recent = await recentSessionFor(ctx.headers, timeout);
+    if (recent) {
+      if (recent.pageCount >= MAX_PAGES_PER_SESSION) return null;
+      sessionId = recent.sid;
+      visitorId = recent.vid;
     }
   }
   if (!sessionId) {

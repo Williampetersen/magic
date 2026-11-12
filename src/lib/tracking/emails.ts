@@ -303,7 +303,6 @@ export type DigestData = {
   visitors: number;
   newVisitors: number;
   returningVisitors: number;
-  anonymous: number;
   leads: Row[];
   countries: Row[];
   cities: Row[];
@@ -329,7 +328,6 @@ export function digestEmail(d: DigestData, origin: string): BuiltEmail {
         ["New / returning", `${d.newVisitors} / ${d.returningVisitors}`],
         ["Leads", String(d.leads.length)],
         ["Forms started but not sent", String(d.abandoned)],
-        ["Visits without cookie consent", `${d.anonymous} (counted only, no details)`],
       ],
     },
   ];

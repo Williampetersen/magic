@@ -147,8 +147,9 @@ https://YOURDOMAIN/api/cron/session-summaries
 
 ### 5. Privacy (GDPR)
 
-- A cookie banner asks first. Without consent only an anonymous visit is counted: no cookie, no IP address in any form, no details.
-- After consent the tracker sets two first-party cookies (a visitor ID for a year, a visit ID for a few hours) and stores pages, clicks, device, approximate location, a shortened IP address (`85.191.xxx.xxx`) and a salted hash of the IP. The full IP address is never stored.
+- Every visit is recorded in full without cookies: pages, clicks, device, approximate location, a shortened IP address (`85.191.xxx.xxx`) and a salted hash of the IP. The full IP address is never stored, and nothing is saved on the visitor's device. The page keeps the visit's IDs in memory; after a reload the visit is matched again by IP hash and browser.
+- The cookie banner only asks about cookies. If the visitor allows them, two first-party cookies are set (a visitor ID for a year, a visit ID for a few hours), which makes recognising a returning visitor more reliable.
+- This relies on legitimate interest instead of consent for the statistics. It is the owner's decision and not legal advice; `/privacy` describes it and offers a way to object.
 - Tracking data older than 90 days is deleted every day. The number of days is a setting.
 - `/privacy` explains all of this to visitors and is linked in the footer.
 - To delete one person's data on request, open the visitor in the dashboard and use **Delete all data**.

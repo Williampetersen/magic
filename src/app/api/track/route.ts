@@ -10,6 +10,7 @@ import {
   recordEvent,
   recordPageview,
   recordPing,
+  sessionBelongsTo,
 } from "@/lib/tracking/track";
 import { type NextRequest, NextResponse, after } from "next/server";
 
@@ -46,8 +47,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = JSON.parse(await request.text()) as Record<string, unknown>;
-    const vid = request.cookies.get(VISITOR_COOKIE)?.value;
-    const sid = request.cookies.get(SESSION_COOKIE)?.value;
+    // Visitors who accepted cookies are known by their cookies. Everyone else
+    // is tracked without cookies: the page keeps the two IDs in memory and
+    // sends them along (body.vid / body.sid). Nothing is stored on their device.
+    const cookieVid = request.cookies.get(VISITOR_COOKIE)?.value;
+    const cookieSid = request.cookies.get(SESSION_COOKIE)?.value;
+    const vid = isUuid(cookieVid) ? cookieVid : body.vid;
+    const sid = isUuid(cookieSid) ? cookieSid : body.sid;
     const ctx: TrackContext = {
       headers: request.headers,
       ua,
@@ -55,12 +61,20 @@ export async function POST(request: NextRequest) {
       sid: isUuid(sid) ? sid : null,
       origin: siteOrigin(request.nextUrl.origin),
     };
+    // c = 1: the visitor pressed Accept in the cookie banner.
+    const cookiesAllowed = body.c === 1;
+    const setCookies = (res: NextResponse, visitorId: string, sessionId: string) => {
+      res.cookies.set(VISITOR_COOKIE, visitorId, cookieOptions(60 * 60 * 24 * 365));
+      res.cookies.set(SESSION_COOKIE, sessionId, cookieOptions(60 * 60 * 4));
+    };
 
+    // Sent by pages that were loaded before cookie-free tracking existed.
     if (body.t === "anon") {
       await recordAnonymous(ctx, body);
       return empty();
     }
 
+    // The visitor withdrew cookie permission: remove the cookies.
     if (body.t === "revoke") {
       const res = empty();
       res.cookies.delete(VISITOR_COOKIE);
@@ -68,16 +82,22 @@ export async function POST(request: NextRequest) {
       return res;
     }
 
-    // Everything below needs cookie consent.
-    if (body.c !== 1) return empty();
+    // The visitor pressed Accept in the middle of a visit: hand the IDs of the
+    // running visit to the browser as cookies.
+    if (body.t === "consent") {
+      const res = empty();
+      if (cookiesAllowed && ctx.sid && ctx.vid && (await sessionBelongsTo(ctx.sid, ctx.vid))) {
+        setCookies(res, ctx.vid, ctx.sid);
+      }
+      return res;
+    }
 
     if (body.t === "pv") {
       const result = await recordPageview(ctx, body);
       if (!result) return empty();
       after(() => result.background().catch((err) => console.error("track background", err)));
-      const res = NextResponse.json({ ok: true });
-      res.cookies.set(VISITOR_COOKIE, result.visitorId, cookieOptions(60 * 60 * 24 * 365));
-      res.cookies.set(SESSION_COOKIE, result.sessionId, cookieOptions(60 * 60 * 4));
+      const res = NextResponse.json({ ok: true, sid: result.sessionId, vid: result.visitorId });
+      if (cookiesAllowed) setCookies(res, result.visitorId, result.sessionId);
       return res;
     }
 

@@ -15,17 +15,24 @@ type Page = {
   pv: string;
   path: string;
   sent: boolean;
+  /** Settles when the server has answered the pageview (and given us the IDs). */
+  ready: Promise<unknown> | null;
   activeMs: number;
   visibleSince: number | null;
   maxScroll: number;
   timer: ReturnType<typeof setTimeout> | null;
 };
 
-// Kept in memory only (no storage) for the life of the page load, so a tagged
-// Instagram link still counts when the visitor accepts cookies a few pages later.
+type Reply = { expired?: boolean; sid?: string; vid?: string };
+
+// Kept in memory only (no storage) for the life of the page load: where the
+// visitor came from, and the IDs of the running visit. Visitors who have not
+// accepted cookies are followed with these alone, so nothing is saved on
+// their device. A full reload forgets them.
 let firstSearch: string | null = null;
 let firstReferrer: string | null = null;
-let anonymousCounted = false;
+let visitId: string | null = null;
+let visitorId: string | null = null;
 
 function readConsent(): Consent {
   try {
@@ -45,11 +52,8 @@ function uuid() {
   );
 }
 
-function post(
-  data: Record<string, unknown>,
-  beacon = false,
-): Promise<{ expired?: boolean } | null> {
-  const payload = JSON.stringify(data);
+function post(data: Record<string, unknown>, beacon = false): Promise<Reply | null> {
+  const payload = JSON.stringify({ ...data, sid: visitId, vid: visitorId });
   if (beacon && typeof navigator.sendBeacon === "function") {
     navigator.sendBeacon(ENDPOINT, new Blob([payload], { type: "text/plain" }));
     return Promise.resolve(null);
@@ -136,6 +140,10 @@ export function Tracker() {
   const [bannerOpen, setBannerOpen] = useState(false);
   const page = useRef<Page | null>(null);
   const formStarted = useRef(false);
+  // Read when a request is sent, so pressing Accept does not restart the page.
+  const cookiesAllowed = useRef(false);
+  cookiesAllowed.current = consent === "accepted";
+  const ready = consent !== null;
 
   // Read the saved choice once the page is in the browser.
   useEffect(() => {
@@ -151,21 +159,12 @@ export function Tracker() {
     return () => window.removeEventListener(OPEN_CONSENT_EVENT, reopen);
   }, []);
 
-  // No consent (yet): count one anonymous visit, nothing else.
+  // Every visitor: one pageview per route. Cookies are only used after Accept
+  // (c: 1); without it the visit is followed with the IDs kept in memory.
   useEffect(() => {
-    if (consent === null || consent === "accepted" || isAdmin || anonymousCounted) return;
-    anonymousCounted = true;
-    post({
-      t: "anon",
-      path: window.location.pathname,
-      search: firstSearch,
-      referrer: firstReferrer,
-    });
-  }, [consent, isAdmin]);
+    if (!ready || isAdmin) return;
 
-  // Full tracking after Accept: one pageview per route.
-  useEffect(() => {
-    if (consent !== "accepted" || isAdmin) return;
+    const c = () => (cookiesAllowed.current ? 1 : 0);
 
     const elapsed = (p: Page) =>
       Math.round((p.activeMs + (p.visibleSince ? Date.now() - p.visibleSince : 0)) / 1000);
@@ -176,9 +175,9 @@ export function Tracker() {
       const nav = navigator as Navigator & {
         connection?: { effectiveType?: string; type?: string };
       };
-      post({
+      p.ready = post({
         t: "pv",
-        c: 1,
+        c: c(),
         pv: p.pv,
         path: p.path,
         title: document.title,
@@ -190,6 +189,11 @@ export function Tracker() {
         vw: window.innerWidth,
         vh: window.innerHeight,
         conn: nav.connection?.type || nav.connection?.effectiveType || null,
+      }).then((res) => {
+        if (res?.sid && res.vid) {
+          visitId = res.sid;
+          visitorId = res.vid;
+        }
       });
     };
 
@@ -198,6 +202,7 @@ export function Tracker() {
         pv: uuid(),
         path: pathname,
         sent: false,
+        ready: null,
         activeMs: 0,
         visibleSince: document.visibilityState === "visible" ? Date.now() : null,
         maxScroll: scrollPercent(),
@@ -218,16 +223,27 @@ export function Tracker() {
       p.maxScroll = Math.max(p.maxScroll, scrollPercent());
       const data = {
         t: "ping",
-        c: 1,
+        c: c(),
         pv: p.pv,
         s: elapsed(p),
         sc: p.maxScroll,
         f: leaving ? 1 : 0,
       };
-      post(data, beacon).then((res) => {
-        // The visit timed out on the server: begin a new one on this page.
-        if (res?.expired && page.current === p) startPage();
-      });
+      if (beacon) {
+        // The page is going away: send now, there is no time to wait.
+        post(data, true);
+        return;
+      }
+      // Wait for the pageview's answer first, so the visit IDs are known.
+      (p.ready ?? Promise.resolve()).then(() =>
+        post(data).then((res) => {
+          // The visit timed out on the server: begin a new one on this page.
+          if (res?.expired && page.current === p) {
+            visitId = null;
+            startPage();
+          }
+        }),
+      );
     };
 
     const onScroll = () => {
@@ -250,22 +266,24 @@ export function Tracker() {
     // The page is being closed: tells the server the visit is probably over.
     const onPageHide = () => ping(true, true);
 
+    // Events wait for the pageview's answer too, so they carry the visit IDs.
+    const sendEvent = (data: Record<string, unknown>) => {
+      const path = window.location.pathname;
+      (page.current?.ready ?? Promise.resolve()).then(() =>
+        post({ t: "ev", c: c(), ...data, path }),
+      );
+    };
+
     const onClick = (event: MouseEvent) => {
       const click = describeClick(event.target);
-      if (click) post({ t: "ev", c: 1, ...click, path: window.location.pathname });
+      if (click) sendEvent(click);
     };
 
     const onFocusIn = (event: FocusEvent) => {
       if (formStarted.current || !(event.target instanceof Element)) return;
       if (!event.target.closest("form.contactForm")) return;
       formStarted.current = true;
-      post({
-        t: "ev",
-        c: 1,
-        type: "form_start",
-        label: "Contact form",
-        path: window.location.pathname,
-      });
+      sendEvent({ type: "form_start", label: "Contact form" });
     };
 
     startPage();
@@ -289,7 +307,7 @@ export function Tracker() {
       document.removeEventListener("click", onClick, true);
       document.removeEventListener("focusin", onFocusIn);
     };
-  }, [consent, isAdmin, pathname]);
+  }, [ready, isAdmin, pathname]);
 
   const choose = (choice: "accepted" | "rejected") => {
     try {
@@ -297,8 +315,10 @@ export function Tracker() {
     } catch {
       // Storage blocked: the choice lasts for this page load only.
     }
+    // Cookies are removed again when permission is withdrawn, and set for the
+    // running visit when it is given.
     if (choice === "rejected" && consent === "accepted") post({ t: "revoke" });
-    if (choice === "rejected") anonymousCounted = true;
+    if (choice === "accepted" && visitId) post({ t: "consent", c: 1 });
     setConsent(choice);
     setBannerOpen(false);
   };
@@ -319,19 +339,19 @@ export function Tracker() {
       gap="16"
     >
       <Column gap="4">
-        <Text variant="heading-strong-s">Cookies and visitor statistics</Text>
+        <Text variant="heading-strong-s">Cookies</Text>
         <Text variant="body-default-s" onBackground="neutral-weak">
-          With your permission I use first-party cookies to see how visitors use this site (pages,
-          device, approximate location). No ads, nothing is sold.{" "}
-          <SmartLink href="/privacy">Privacy policy</SmartLink>
+          This site keeps visitor statistics (pages, device, approximate location) without cookies.
+          May I also set a first-party cookie to recognise your browser on your next visit? No ads,
+          nothing is sold. <SmartLink href="/privacy">Privacy policy</SmartLink>
         </Text>
       </Column>
       <Row gap="8" horizontal="end" className={styles.actions}>
         <Button size="s" variant="secondary" onClick={() => choose("rejected")}>
-          Reject
+          No cookies
         </Button>
         <Button size="s" variant="primary" onClick={() => choose("accepted")}>
-          Accept
+          Allow cookie
         </Button>
       </Row>
     </Column>

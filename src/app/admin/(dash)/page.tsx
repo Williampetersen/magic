@@ -109,7 +109,7 @@ export default async function OverviewPage({
             }
           >
             Put a tagged link in your Instagram bio, stories, posts and DMs. Visitors show up here
-            as soon as they accept cookies.
+            as soon as they open the site.
           </Empty>
         </div>
       )}
@@ -160,11 +160,6 @@ export default async function OverviewPage({
           label="Lead conversion"
           value={`${conversion.toFixed(1)}%`}
           hint="of visitors became a lead"
-        />
-        <StatTile
-          label="Without consent"
-          value={nf.format(d.anonymous)}
-          hint="visits counted, no details"
         />
       </div>
 

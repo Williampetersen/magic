@@ -73,20 +73,13 @@ export default async function PrivacyPage() {
         </P>
       </Section>
 
-      <Section heading="If you do not accept cookies">
+      <Section heading="Visitor statistics (every visit)">
         <P>
-          Your visit is only counted. I store the page you opened, your country, whether you came
-          from Instagram, and the time. No cookie is set, no IP address is stored in any form, and
-          the visit cannot be linked to you. Your choice is remembered in your browser so you are
-          not asked again.
+          I collect the following about every visit, to understand which content and social media
+          posts work. This is done without cookies and nothing is saved on your device for it:
         </P>
-      </Section>
-
-      <Section heading="If you accept cookies">
-        <P>I collect the following to understand which content and social media posts work:</P>
         <List
           items={[
-            "Two first-party cookies: a random visitor ID kept for up to 1 year, to recognise a returning browser, and a visit ID that lasts a few hours.",
             "Pages you view, time spent on each page, how far you scroll, and which buttons and links you click.",
             "Where you came from: the referring website and campaign tags in the link (for example an Instagram story or bio link).",
             "Approximate location from your IP address: country, region, city and postal code. This is the location of your internet connection, not your exact position.",
@@ -96,26 +89,40 @@ export default async function PrivacyPage() {
           ]}
         />
         <P>
+          A later visit from the same internet connection and the same browser can be recognised as
+          a return visit, using the encrypted IP fingerprint.
+        </P>
+        <P>
           Instagram does not tell this website who you are. I never receive your Instagram username,
           profile, age or gender.
+        </P>
+      </Section>
+
+      <Section heading="Cookies (only if you allow them)">
+        <P>
+          If you choose “Allow cookie” in the banner, two first-party cookies are set: a random
+          visitor ID kept for up to 1 year, to recognise your browser when you come back, and a
+          visit ID that lasts a few hours. If you choose “No cookies”, no cookies are set. Your
+          choice is remembered in your browser so you are not asked again, and you can change it
+          below at any time.
         </P>
       </Section>
 
       <Section heading="Contact form">
         <P>
           When you send the contact form I store your name, email, phone number and the service you
-          asked about, so I can answer you. If you accepted cookies, this request is linked to your
-          visit (for example which pages you looked at before writing). You also get a confirmation
-          email.
+          asked about, so I can answer you. The request is linked to your visit (for example which
+          pages you looked at before writing). You also get a confirmation email.
         </P>
       </Section>
 
       <Section heading="Why, and the legal basis">
         <P>
-          Statistics and the cookie are based on your consent (GDPR article 6(1)(a) and the Danish
-          cookie rules). Contact requests are handled to answer your enquiry (article 6(1)(b)). The
-          anonymous visit count is based on legitimate interest in knowing how many people visit
-          (article 6(1)(f)).
+          Visitor statistics are based on my legitimate interest in knowing how the website and my
+          social media posts perform (GDPR article 6(1)(f)). You can object to this at any time by
+          writing to me, and I will delete your data. The cookies are based on your consent (article
+          6(1)(a) and the Danish cookie rules). Contact requests are handled to answer your enquiry
+          (article 6(1)(b)).
         </P>
       </Section>
 
@@ -139,9 +146,10 @@ export default async function PrivacyPage() {
 
       <Section heading="Your rights">
         <P>
-          You can ask to see, correct or delete your data, and you can withdraw consent at any time.
-          Write to <SmartLink href={`mailto:${email}`}>{email}</SmartLink>. You can also complain to
-          the Danish Data Protection Agency (Datatilsynet, datatilsynet.dk).
+          You can ask to see, correct or delete your data, object to the visitor statistics, and
+          withdraw your cookie consent at any time. Write to{" "}
+          <SmartLink href={`mailto:${email}`}>{email}</SmartLink>. You can also complain to the
+          Danish Data Protection Agency (Datatilsynet, datatilsynet.dk).
         </P>
         <CookieSettingsButton />
       </Section>

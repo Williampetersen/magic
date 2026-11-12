@@ -263,7 +263,7 @@ export async function sendDailyDigest(origin: string) {
   const [{ day }] = await db()`
     SELECT ((now() AT TIME ZONE ${TIME_ZONE})::date - 1)::text AS day`;
 
-  const [sessions, pages, leads, anonymous] = await Promise.all([
+  const [sessions, pages, leads] = await Promise.all([
     db()`
       SELECT * FROM sessions
       WHERE source = 'instagram' AND (started_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date
@@ -277,12 +277,9 @@ export async function sendDailyDigest(origin: string) {
       SELECT l.name, l.email FROM leads l JOIN sessions s ON s.id = l.session_id
       WHERE s.source = 'instagram' AND (l.created_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date
       ORDER BY l.created_at`,
-    db()`
-      SELECT count(*)::int AS count FROM anonymous_visits
-      WHERE source = 'instagram' AND (created_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date`,
   ]);
 
-  if (!sessions.length && !anonymous[0].count) return { sent: false, why: "no visitors" };
+  if (!sessions.length) return { sent: false, why: "no visitors" };
 
   const visitorIds = new Set(sessions.map((s) => s.visitor_id));
   // A visitor is new when their very first visit happened on this day.
@@ -293,7 +290,6 @@ export async function sendDailyDigest(origin: string) {
     visitors: visitorIds.size,
     newVisitors: newIds.size,
     returningVisitors: visitorIds.size - newIds.size,
-    anonymous: anonymous[0].count,
     leads,
     countries: topCounts(sessions, (s) => s.country),
     cities: topCounts(sessions, (s) => s.city),

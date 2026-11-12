@@ -5,7 +5,7 @@ import { type LeadTracking, saveLead } from "@/lib/tracking/leads";
 import { escapeHtml, sendMail } from "@/lib/tracking/mail";
 import { deliver } from "@/lib/tracking/notify";
 import { getSettings, isOn, siteOrigin } from "@/lib/tracking/settings";
-import { SESSION_COOKIE, VISITOR_COOKIE } from "@/lib/tracking/track";
+import { SESSION_COOKIE, VISITOR_COOKIE, recentSessionFor } from "@/lib/tracking/track";
 import { type NextRequest, NextResponse } from "next/server";
 
 type ContactPayload = {
@@ -52,8 +52,14 @@ export async function POST(request: NextRequest) {
     let settings = null;
     if (hasDb()) {
       try {
-        const vid = request.cookies.get(VISITOR_COOKIE)?.value;
-        const sid = request.cookies.get(SESSION_COOKIE)?.value;
+        let vid = request.cookies.get(VISITOR_COOKIE)?.value;
+        let sid = request.cookies.get(SESSION_COOKIE)?.value;
+        if (!isUuid(vid)) {
+          // No cookies: link the lead to the visit running from this browser.
+          const recent = await recentSessionFor(request.headers, 60);
+          vid = recent?.vid;
+          sid = recent?.sid;
+        }
         const saved = await saveLead(isUuid(vid) ? vid : null, isUuid(sid) ? sid : null, lead);
         leadId = saved.leadId;
         tracking = saved.tracking;

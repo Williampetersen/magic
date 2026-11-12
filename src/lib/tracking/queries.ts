@@ -16,7 +16,6 @@ export async function getOverview(days: number) {
   const [
     fixed,
     kpi,
-    anonymous,
     series,
     placements,
     countries,
@@ -54,11 +53,6 @@ export async function getOverview(days: number) {
         (count(*) FILTER (WHERE is_returning))::int AS returning_sessions,
         (count(*) FILTER (WHERE NOT is_returning))::int AS new_sessions
       FROM sessions WHERE ${ig}`,
-      [days],
-    ),
-    q(
-      `SELECT count(*)::int AS count FROM anonymous_visits
-       WHERE source = 'instagram' AND ${inRange("created_at")}`,
       [days],
     ),
     q(
@@ -136,7 +130,6 @@ export async function getOverview(days: number) {
   return {
     fixed: fixed[0],
     kpi: kpi[0],
-    anonymous: anonymous[0].count as number,
     series,
     placements,
     countries,

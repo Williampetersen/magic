@@ -4,8 +4,8 @@ import type { LeadInput } from "./emails";
 export type LeadTracking = { session: Row; pageviews: Row[]; earlierVisits: number };
 
 /**
- * Stores a contact-form lead. When the visitor accepted tracking, the lead is
- * linked to their visitor row and the session is marked as converted.
+ * Stores a contact-form lead. When the visit is known, the lead is linked to
+ * the visitor row and the session is marked as converted.
  */
 export async function saveLead(vid: string | null, sid: string | null, lead: LeadInput) {
   let session: Row | undefined;
