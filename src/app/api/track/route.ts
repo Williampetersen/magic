@@ -1,6 +1,6 @@
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/tracking/adminToken";
 import { hasDb } from "@/lib/tracking/db";
-import { isBot, isUuid } from "@/lib/tracking/detect";
+import { clientIp, isBot, isMetaScanner, isUuid } from "@/lib/tracking/detect";
 import { siteOrigin } from "@/lib/tracking/settings";
 import {
   SESSION_COOKIE,
@@ -36,6 +36,9 @@ export async function POST(request: NextRequest) {
 
     const ua = request.headers.get("user-agent") || "";
     if (isBot(ua)) return empty();
+
+    // Instagram's servers scan a link when someone opens it. Not a visitor.
+    if (isMetaScanner(clientIp(request.headers))) return empty();
 
     // Do not record the site owner while they are logged in to the dashboard.
     if (verifySessionToken(request.cookies.get(ADMIN_COOKIE)?.value)) return empty();

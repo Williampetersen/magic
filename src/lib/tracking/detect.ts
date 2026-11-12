@@ -65,6 +65,65 @@ export function isBot(ua: string) {
   return !ua || ua.length < 20 || BOT_PATTERN.test(ua);
 }
 
+/**
+ * Networks that belong to Meta (AS32934; announced prefixes from RIPEstat,
+ * November 2026). When a link is opened in Instagram, Meta's servers load the
+ * page as well to scan it, using browsers that look like ordinary phones and
+ * computers. Real people never browse from these addresses.
+ */
+const META_NETWORKS: [string, number][] = [
+  ["31.13.24.0", 21],
+  ["31.13.64.0", 18],
+  ["45.64.40.0", 22],
+  ["57.141.0.0", 19],
+  ["57.144.0.0", 14],
+  ["66.220.144.0", 20],
+  ["69.63.176.0", 20],
+  ["69.171.224.0", 19],
+  ["74.119.76.0", 22],
+  ["102.132.96.0", 20],
+  ["103.4.96.0", 22],
+  ["129.134.0.0", 17],
+  ["157.240.0.0", 17],
+  ["157.240.192.0", 18],
+  ["163.70.128.0", 17],
+  ["163.77.132.0", 23],
+  ["163.77.136.0", 23],
+  ["163.77.160.0", 20],
+  ["173.252.64.0", 18],
+  ["179.60.192.0", 22],
+  ["185.60.216.0", 22],
+  ["185.89.216.0", 22],
+  ["204.15.20.0", 22],
+];
+const META_IPV6 = /^(2a03:2880:|2620:0:1c[0-9a-f]{2}:)/;
+
+function ipv4ToNumber(ip: string) {
+  const parts = ip.split(".");
+  if (parts.length !== 4) return null;
+  let n = 0;
+  for (const part of parts) {
+    const octet = Number(part);
+    if (!/^\d{1,3}$/.test(part) || octet > 255) return null;
+    n = n * 256 + octet;
+  }
+  return n;
+}
+
+const META_RANGES = META_NETWORKS.map(([base, bits]) => {
+  const start = ipv4ToNumber(base) ?? 0;
+  return [start, start + 2 ** (32 - bits) - 1] as const;
+});
+
+/** True when the request comes from Meta's own servers (Instagram's link scanner). */
+export function isMetaScanner(ip: string | null) {
+  if (!ip) return false;
+  const address = ip.toLowerCase().replace(/^::ffff:/, "");
+  if (address.includes(":")) return META_IPV6.test(address);
+  const n = ipv4ToNumber(address);
+  return n !== null && META_RANGES.some(([start, end]) => n >= start && n <= end);
+}
+
 const IPHONE_MODELS: Record<string, string> = {
   "iPhone12,1": "iPhone 11",
   "iPhone12,3": "iPhone 11 Pro",

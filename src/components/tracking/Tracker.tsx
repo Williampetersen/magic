@@ -162,7 +162,8 @@ export function Tracker() {
   // Every visitor: one pageview per route. Cookies are only used after Accept
   // (c: 1); without it the visit is followed with the IDs kept in memory.
   useEffect(() => {
-    if (!ready || isAdmin) return;
+    // A browser that is driven by a program (scanner, test tool) is not a visitor.
+    if (!ready || isAdmin || navigator.webdriver) return;
 
     const c = () => (cookiesAllowed.current ? 1 : 0);
 
