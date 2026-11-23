@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { UAParser } from "ua-parser-js";
+import { PLACEHOLDER_MODEL, galaxyName, iphoneName } from "./devices";
 
 export type Utm = {
   source: string | null;
@@ -124,82 +125,86 @@ export function isMetaScanner(ip: string | null) {
   return n !== null && META_RANGES.some(([start, end]) => n >= start && n <= end);
 }
 
-const IPHONE_MODELS: Record<string, string> = {
-  "iPhone12,1": "iPhone 11",
-  "iPhone12,3": "iPhone 11 Pro",
-  "iPhone12,5": "iPhone 11 Pro Max",
-  "iPhone12,8": "iPhone SE (2nd gen)",
-  "iPhone13,1": "iPhone 12 mini",
-  "iPhone13,2": "iPhone 12",
-  "iPhone13,3": "iPhone 12 Pro",
-  "iPhone13,4": "iPhone 12 Pro Max",
-  "iPhone14,4": "iPhone 13 mini",
-  "iPhone14,5": "iPhone 13",
-  "iPhone14,2": "iPhone 13 Pro",
-  "iPhone14,3": "iPhone 13 Pro Max",
-  "iPhone14,6": "iPhone SE (3rd gen)",
-  "iPhone14,7": "iPhone 14",
-  "iPhone14,8": "iPhone 14 Plus",
-  "iPhone15,2": "iPhone 14 Pro",
-  "iPhone15,3": "iPhone 14 Pro Max",
-  "iPhone15,4": "iPhone 15",
-  "iPhone15,5": "iPhone 15 Plus",
-  "iPhone16,1": "iPhone 15 Pro",
-  "iPhone16,2": "iPhone 15 Pro Max",
-  "iPhone17,3": "iPhone 16",
-  "iPhone17,4": "iPhone 16 Plus",
-  "iPhone17,1": "iPhone 16 Pro",
-  "iPhone17,2": "iPhone 16 Pro Max",
-  "iPhone17,5": "iPhone 16e",
-};
+export type DeviceHints = { model?: string | null; platformVersion?: string | null };
 
-/** Samsung sends a product code. These are the common recent phones. */
-const GALAXY_MODELS: Record<string, string> = {
-  "SM-S938": "Galaxy S25 Ultra",
-  "SM-S936": "Galaxy S25+",
-  "SM-S931": "Galaxy S25",
-  "SM-S928": "Galaxy S24 Ultra",
-  "SM-S926": "Galaxy S24+",
-  "SM-S921": "Galaxy S24",
-  "SM-S918": "Galaxy S23 Ultra",
-  "SM-S916": "Galaxy S23+",
-  "SM-S911": "Galaxy S23",
-  "SM-S908": "Galaxy S22 Ultra",
-  "SM-S906": "Galaxy S22+",
-  "SM-S901": "Galaxy S22",
-  "SM-G998": "Galaxy S21 Ultra",
-  "SM-G996": "Galaxy S21+",
-  "SM-G991": "Galaxy S21",
-  "SM-A566": "Galaxy A56",
-  "SM-A556": "Galaxy A55",
-  "SM-A546": "Galaxy A54",
-  "SM-A536": "Galaxy A53",
-  "SM-A528": "Galaxy A52s",
-  "SM-A366": "Galaxy A36",
-  "SM-A356": "Galaxy A35",
-  "SM-A346": "Galaxy A34",
-  "SM-A256": "Galaxy A25",
-  "SM-A166": "Galaxy A16",
-  "SM-A156": "Galaxy A15",
-};
+/** What Chrome sends for every Android phone since 2023, whatever the phone really is. */
+const REDUCED_ANDROID = /\(Linux; Android 10; K\)/;
 
-export function parseUserAgent(ua: string) {
-  const r = new UAParser(ua).getResult();
+/**
+ * Device, system and browser from the user agent. Chromium browsers also tell
+ * the page the real phone model and system version on request (client hints).
+ * When the tracker could read them, they are passed in as `hints`.
+ */
+export function parseUserAgent(ua: string, hints: DeviceHints = {}) {
+  const hintModel =
+    clip(hints.model, 60)
+      ?.replace(/[;()]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim() || null;
+  const hintVersion = /^\d+(\.\d+){0,3}$/.test(hints.platformVersion || "")
+    ? (hints.platformVersion as string)
+    : null;
+  const hintMajor = hintVersion ? Number.parseInt(hintVersion, 10) : 0;
+  const reduced = REDUCED_ANDROID.test(ua);
+
+  // Put the real phone back into the reduced user agent, so the parser can
+  // name the brand, model and device type as usual.
+  const r = new UAParser(
+    reduced && hintModel ? ua.replace(REDUCED_ANDROID, `(Linux; Android 10; ${hintModel})`) : ua,
+  ).getResult();
+
   let model = r.device.model || null;
+  if (model === PLACEHOLDER_MODEL) model = null;
   // The Instagram app adds the exact Apple hardware id, e.g. "(iPhone14,5; iOS 17_0; ...)"
   const apple = ua.match(/Instagram [\d.]+ \((iP(?:hone|ad)\d+,\d+)/);
-  if (apple) model = IPHONE_MODELS[apple[1]] || `${model || "Apple"} (${apple[1]})`;
-  const galaxy = model ? GALAXY_MODELS[model.slice(0, 7)] : undefined;
+  if (apple) model = iphoneName(apple[1]) || `${model || "Apple"} (${apple[1]})`;
+  const galaxy = model ? galaxyName(model) : null;
   if (galaxy) model = `${galaxy} (${model})`;
+
+  let osVersion = r.os.version || null;
+  if (reduced) {
+    // "Android 10" is a fixed placeholder as well.
+    osVersion = hintMajor > 0 ? String(hintMajor) : null;
+  } else if (r.os.name === "Windows" && osVersion === "10" && hintMajor >= 13) {
+    // Windows 11 calls itself Windows 10 in the user agent.
+    osVersion = "11";
+  } else if (/^mac/i.test(r.os.name || "") && hintVersion && hintMajor > 10) {
+    // Every Mac says 10.15.7. The hint has the real macOS version.
+    osVersion = hintVersion.replace(/(\.0)+$/, "");
+  }
+
   return {
     device_type: r.device.type || "desktop",
     device_vendor: r.device.vendor || null,
     device_model: model,
     os: r.os.name || null,
-    os_version: r.os.version || null,
+    os_version: osVersion,
     browser: r.browser.name || null,
     browser_version: r.browser.version || null,
   };
+}
+
+/**
+ * Programs that open the page with a real browser engine and an ordinary user
+ * agent, so the bot pattern above cannot see them. Each rule is something no
+ * real phone or computer does, and each was seen on this site:
+ *  - a 2000 x 2000 screen: Facebook's and Instagram's link scanners, also when
+ *    they run outside Meta's own networks (seen from Amazon's cloud);
+ *  - a desktop browser in an 800 x 600 window on a bigger screen: the default
+ *    window of automated Chrome (Puppeteer, Playwright);
+ *  - the phone built into browser developer tools ("Nexus 5 Build/MRA58N"), or
+ *    an iPhone that says it is desktop Edge ("Edg/", where real Edge on an
+ *    iPhone says "EdgiOS/"): preview crawlers.
+ */
+export function isAutomatedClient(ua: string, body: Record<string, unknown>) {
+  const size = (key: string) => (typeof body[key] === "number" ? (body[key] as number) : null);
+  const [sw, sh, vw, vh] = [size("sw"), size("sh"), size("vw"), size("vh")];
+  if (sw === 2000 && sh === 2000) return true;
+  const phone = /Mobi|Android|iPhone|iPad/i.test(ua);
+  if (!phone && vw === 800 && vh === 600 && (sw ?? 0) > 800) return true;
+  if (/Nexus 5 Build\/MRA58N/.test(ua)) return true;
+  if (/iPhone|iPad/.test(ua) && /\sEdg\//.test(ua)) return true;
+  return false;
 }
 
 const DK_REGIONS: Record<string, string> = {
