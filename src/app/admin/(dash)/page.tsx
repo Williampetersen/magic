@@ -22,6 +22,7 @@ import {
 import { requestOrigin, requireAdmin } from "@/lib/tracking/adminAuth";
 import { hasDb } from "@/lib/tracking/db";
 import { deviceName, fmtAgo, fmtDuration, placementLabel } from "@/lib/tracking/format";
+import { cityText } from "@/lib/tracking/location";
 import { closeStaleSessions } from "@/lib/tracking/notify";
 import { getOverview } from "@/lib/tracking/queries";
 import Link from "next/link";
@@ -186,7 +187,7 @@ export default async function OverviewPage({
                     <span className={styles.feedMain}>
                       <span className={styles.feedTitle}>
                         <Flag code={s.country_code} title={s.country} />
-                        <span className={styles.truncate}>{s.city || s.country || "Unknown"}</span>
+                        <span className={styles.truncate}>{cityText(s)}</span>
                         <SourceBadge session={s} />
                       </span>
                       <span className={styles.feedMeta}>

@@ -278,24 +278,69 @@ export function hashIp(ip: string | null) {
   return crypto.createHash("sha256").update(`${salt}:${ip}`).digest("hex");
 }
 
-/** Optional ISP lookup. Only runs when IPINFO_TOKEN is set. */
-export async function lookupIsp(ip: string | null) {
+/**
+ * Networks of cloud and hosting companies. People do not browse from these;
+ * scanners, crawlers and scripts do. Akamai, Cloudflare and Fastly are left
+ * out on purpose: Apple's iCloud Private Relay sends real Safari users
+ * through them.
+ */
+const HOSTING_NETWORK =
+  /amazon|aws|google cloud|google llc|microsoft|azure|hetzner|\bovh|digitalocean|linode|alibaba|tencent|oracle|facebook|meta platforms|leaseweb|contabo|vultr|choopa|m247|datacamp|scaleway|ionos|hostinger|colocrossing|psychz|quadranet|zenlayer|huawei|baidu|ucloud|hostroyale|servers\.com|g-core|gcore|stark industries|aeza|pfcloud|hurricane electric/i;
+
+export type IpDetails = {
+  isp: string | null;
+  network: string | null;
+  hosting: boolean;
+  countryCode: string | null;
+  region: string | null;
+  city: string | null;
+  postalCode: string | null;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+/**
+ * Optional second opinion from IPinfo: internet provider, and a location that
+ * is often more precise than Vercel's for Danish home and work connections.
+ * Only runs when IPINFO_TOKEN is set (free account, 50,000 lookups a month).
+ */
+export async function lookupIp(ip: string | null): Promise<IpDetails | null> {
   const token = process.env.IPINFO_TOKEN;
   if (!token || !ip || ip === "::1" || ip.startsWith("127.") || ip.startsWith("192.168.")) {
     return null;
   }
   try {
-    const res = await fetch(`https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${token}`, {
-      signal: AbortSignal.timeout(2000),
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
+    const res = await fetch(
+      `https://ipinfo.io/${encodeURIComponent(ip)}/json?token=${encodeURIComponent(token)}`,
+      { signal: AbortSignal.timeout(2500), cache: "no-store" },
+    );
+    if (!res.ok) {
+      console.warn("ipinfo lookup: status", res.status);
+      return null;
+    }
     const data = await res.json();
-    const isp: string | null =
-      data.carrier?.name || data.company?.name || data.org?.replace(/^AS\d+\s+/, "") || null;
+    const org: string = data.asn?.name || data.org?.replace(/^AS\d+\s+/, "") || "";
+    const isp: string | null = data.carrier?.name || data.company?.name || org || null;
     const network: string | null = data.carrier?.name ? "mobile" : data.company?.type || null;
-    return { isp: clip(isp, 150), network: clip(network, 40) };
-  } catch {
+    const [lat, lon] = String(data.loc || "")
+      .split(",")
+      .map((n) => Number.parseFloat(n));
+    return {
+      isp: clip(isp, 150),
+      network: clip(network, 40),
+      hosting:
+        Boolean(data.privacy?.hosting) ||
+        data.company?.type === "hosting" ||
+        HOSTING_NETWORK.test(org),
+      countryCode: clip(data.country, 2)?.toUpperCase() || null,
+      region: clip(data.region, 120),
+      city: clip(data.city, 120),
+      postalCode: clip(data.postal, 20),
+      latitude: Number.isFinite(lat) ? lat : null,
+      longitude: Number.isFinite(lon) ? lon : null,
+    };
+  } catch (err) {
+    console.warn("ipinfo lookup:", err instanceof Error ? err.name : err);
     return null;
   }
 }

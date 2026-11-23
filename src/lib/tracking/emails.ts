@@ -9,6 +9,7 @@ import {
   placementLabel,
   sourceLabel,
 } from "./format";
+import { isUncertain } from "./location";
 import { escapeHtml as e } from "./mail";
 
 export type BuiltEmail = { subject: string; html: string; text: string };
@@ -160,7 +161,10 @@ const visitorButton = (origin: string, s: Row) => ({
   url: `${origin}/admin/visitors/${s.visitor_id}`,
 });
 
-const where = (s: Row) => s.city || s.country || "unknown location";
+const where = (s: Row) =>
+  isUncertain(s)
+    ? `${s.country || "Denmark"} (city uncertain)`
+    : s.city || s.country || "unknown location";
 
 export function arrivalEmail(s: Row, previousVisit: string | null, origin: string): BuiltEmail {
   const returning = Boolean(s.is_returning);

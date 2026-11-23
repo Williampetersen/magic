@@ -12,6 +12,7 @@ import { db, hasDb } from "@/lib/tracking/db";
 import { clientIp, hashIp, isUuid } from "@/lib/tracking/detect";
 import { testEmail } from "@/lib/tracking/emails";
 import { sendMail } from "@/lib/tracking/mail";
+import { ensureSchema } from "@/lib/tracking/schema";
 import {
   SETTING_DEFAULTS,
   type SettingKey,
@@ -169,6 +170,22 @@ export async function deleteVisitorAction(formData: FormData) {
   }
   revalidatePath("/admin", "layout");
   redirect("/admin/visitors");
+}
+
+/**
+ * "This is me": hides a visitor (and all their visits) from the statistics, or
+ * counts them again. Future visits from the same device are hidden as well.
+ */
+export async function setVisitorExcludedAction(formData: FormData) {
+  if (!(await isAdmin())) redirect("/admin/login");
+  const id = formData.get("id");
+  const excluded = formData.get("excluded") === "1";
+  if (isUuid(id)) {
+    await ensureSchema();
+    await db()`UPDATE visitors SET excluded = ${excluded} WHERE id = ${id}`;
+    await db()`UPDATE sessions SET is_bot = ${excluded} WHERE visitor_id = ${id}`;
+  }
+  revalidatePath("/admin", "layout");
 }
 
 export async function deleteLeadAction(formData: FormData) {

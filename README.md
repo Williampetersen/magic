@@ -100,7 +100,7 @@ Add these in Vercel → Settings → Environment Variables (see `.env.example`),
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | Yes | Email sending, shared with the contact form |
 | `ALERT_EMAIL_TO` | No | Where alerts go. Default `williampetersencop@gmail.com` |
 | `SITE_URL` | No | Public address for links in emails. Detected automatically |
-| `IPINFO_TOKEN` | No | Adds the visitor's internet provider (free token from ipinfo.io) |
+| `IPINFO_TOKEN` | Recommended | Internet provider, a better city for many Danish visitors, hides cloud servers (free token from ipinfo.io) |
 
 Create random values with `openssl rand -base64 32`.
 
@@ -154,7 +154,16 @@ https://YOURDOMAIN/api/cron/session-summaries
 - `/privacy` explains all of this to visitors and is linked in the footer.
 - To delete one person's data on request, open the visitor in the dashboard and use **Delete all data**.
 
-### 6. Good to know
+### 6. Locations (for Meta ads)
+
+**Admin → Locations** shows every visitor by city and by source (Instagram bio link `/dk`, other Instagram, Facebook, Google, direct, other websites), with leads per city, the Danish regions, a map, the latest visits, a CSV per city and a list of cities written the way Meta Ads names them.
+
+- **"Copenhagen?" means uncertain.** Most Danish mobile networks (and some home internet providers) register their addresses in central Copenhagen, so the IP location of those visitors is the Copenhagen city centre wherever they really are. Those visits are kept apart and left out of the Meta list. No website can see the real town without asking the visitor for permission.
+- **Second opinion (recommended):** add a free token from ipinfo.io as `IPINFO_TOKEN`. New visits then get the internet provider, a better city when Vercel only had the provider's Copenhagen address, and visits from cloud servers (bots) are hidden.
+- **Your own visits:** open yourself in Admin → Visitors and press **This is me – hide from statistics**. Your later visits from the same phone or computer on the same connection stay hidden too. Hidden visits can be listed with Source → "Hidden".
+- Known link scanners that were recorded earlier (2000 × 2000 screen, Meta's own networks) are hidden automatically.
+
+### 7. Good to know
 
 - Your own visits are not recorded while you are logged in to `/admin` in the same browser. To test, use a private window or open a tagged link from the Instagram app.
 - Bots and link previews are ignored. So are Instagram's own servers: when someone opens a link in Instagram, Meta loads the page too, to scan it, with a browser that looks like a normal phone. Those requests come from Meta's networks (list in `src/lib/tracking/detect.ts`) and are not recorded. Scanners on other networks can still slip through; they show up as one-page visits from data-centre towns in the United States.

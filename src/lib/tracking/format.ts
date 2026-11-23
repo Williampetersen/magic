@@ -1,5 +1,6 @@
 import type { Row } from "./db";
 import { PLACEHOLDER_MODEL, displayModel } from "./devices";
+import { isUncertain } from "./location";
 
 export const TIME_ZONE = "Europe/Copenhagen";
 
@@ -87,6 +88,9 @@ export function sourceLabel(s: Row) {
 }
 
 export function locationLabel(s: Row) {
+  if (isUncertain(s)) {
+    return `${s.country || "Denmark"}, city uncertain (the internet provider is registered in Copenhagen)`;
+  }
   // Outside Denmark the region is only a short code ("NH", "03"), which says little.
   const region = s.region && !/^[A-Z0-9]{1,3}$/.test(s.region) ? s.region : null;
   return [s.city, region, s.country].filter(Boolean).join(", ") || "Unknown location";
@@ -94,9 +98,11 @@ export function locationLabel(s: Row) {
 
 /**
  * "Jernbanegade, 1609 Copenhagen": the road nearest to the visit's coordinates.
- * Approximate, because the coordinates come from the IP address.
+ * Approximate, because the coordinates come from the IP address. Left out when
+ * the coordinates are only the provider's registered address.
  */
 export function nearestAddress(s: Row) {
+  if (isUncertain(s)) return null;
   const town = [s.near_postcode, s.near_city].filter(Boolean).join(" ");
   return [s.near_road, town].filter(Boolean).join(", ") || null;
 }

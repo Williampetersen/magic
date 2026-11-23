@@ -9,12 +9,13 @@ import {
   isInstagramInApp,
   isInstagramVisit,
   isUuid,
-  lookupIsp,
+  lookupIp,
   maskIp,
   parseUserAgent,
   parseUtm,
 } from "./detect";
 import { addNearestAddress } from "./geocode";
+import { danishRegion, isUncertain } from "./location";
 import {
   checkHighInterest,
   closeSessionAfterLeaving,
@@ -172,8 +173,69 @@ async function startSession(ctx: TrackContext, body: Body, path: string) {
     connection_type: clip(body.conn, 40),
     is_returning: visitor.visit_count > 1,
     visit_number: visitor.visit_count,
+    // The owner marked this visitor as themselves: keep the visit (so the
+    // device is still recognised) but leave it out of every statistic.
+    is_bot: Boolean(visitor.excluded),
   });
   return { id, visitorId: visitor.id as string, ip };
+}
+
+const normCity = (city: unknown) =>
+  typeof city === "string"
+    ? city
+        .normalize("NFD")
+        .replace(/\p{Diacritic}/gu, "")
+        .toLowerCase()
+        .replace(/ø/g, "o")
+        .replace(/æ/g, "ae")
+        .replace(/^kobenhavn\b.*/, "copenhagen")
+        .trim()
+    : "";
+
+/**
+ * Internet provider and a second opinion on the location, from IPinfo (only
+ * when IPINFO_TOKEN is set). Visits from cloud and hosting networks are hidden.
+ * IPinfo's city replaces Vercel's only when Vercel had nothing better than the
+ * provider's registered address (see location.ts).
+ */
+async function enrichNewSession(session: Row, ip: string | null) {
+  const net = await lookupIp(ip);
+  if (!net) return;
+  const update: Row = {};
+  if (net.isp) update.isp = net.isp;
+  if (!session.connection_type && net.network) update.connection_type = net.network;
+  if (net.hosting) update.is_bot = true;
+
+  const sameCountry =
+    !net.countryCode || !session.country_code || net.countryCode === session.country_code;
+  const vercelWeak = !session.city || isUncertain(session);
+  if (
+    sameCountry &&
+    vercelWeak &&
+    net.city &&
+    net.latitude !== null &&
+    net.longitude !== null &&
+    normCity(net.city) !== normCity(session.city)
+  ) {
+    const code = net.countryCode || session.country_code;
+    Object.assign(update, {
+      country_code: code,
+      city: net.city,
+      region: code === "DK" ? danishRegion(net.region) : net.region,
+      postal_code: net.postalCode,
+      latitude: net.latitude,
+      longitude: net.longitude,
+      geo_source: "ipinfo",
+    });
+  }
+
+  const keys = Object.keys(update);
+  if (!keys.length) return;
+  Object.assign(session, update);
+  await db().query(
+    `UPDATE sessions SET ${keys.map((k, i) => `${k} = $${i + 2}`).join(", ")} WHERE id = $1`,
+    [session.id, ...keys.map((k) => update[k])],
+  );
 }
 
 export async function recordPageview(ctx: TrackContext, body: Body) {
@@ -229,21 +291,12 @@ export async function recordPageview(ctx: TrackContext, body: Body) {
   const isNew = newSessionIp !== undefined;
   const background: Background = async () => {
     if (isNew) {
-      // Both lookups finish before the arrival email, so it can include them.
-      const [net] = await Promise.all([
-        lookupIsp(newSessionIp ?? null),
-        addNearestAddress(session),
-      ]);
-      if (net?.isp) {
-        session.isp = net.isp;
-        session.connection_type = session.connection_type || net.network;
-        await db()`
-          UPDATE sessions SET isp = ${net.isp}, connection_type = ${session.connection_type}
-          WHERE id = ${session.id}`;
-      }
-      await notifyArrival(session, ctx.origin);
+      // The lookups finish before the arrival email, so it can include them.
+      await enrichNewSession(session, newSessionIp ?? null);
+      await addNearestAddress(session);
+      if (!session.is_bot) await notifyArrival(session, ctx.origin);
     }
-    await checkHighInterest(session, ctx.origin);
+    if (!session.is_bot) await checkHighInterest(session, ctx.origin);
     await closeStaleSessions(ctx.origin);
   };
 

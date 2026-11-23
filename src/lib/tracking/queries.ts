@@ -1,4 +1,6 @@
 import { type Row, db } from "./db";
+import { CHANNEL_SQL, type Channel, UNCERTAIN_SQL, isChannel } from "./location";
+import { ensureSchema } from "./schema";
 
 /* Read-only queries for the admin dashboard. Days are Copenhagen calendar days. */
 
@@ -7,12 +9,16 @@ const TODAY = "(now() AT TIME ZONE 'Europe/Copenhagen')::date";
 /** True when the timestamp falls in the last $1 days (today included). */
 const inRange = (col: string) => `${DAY(col)} > ${TODAY} - $1::int`;
 
-const q = (text: string, params: unknown[] = []) => db().query(text, params) as Promise<Row[]>;
+/** Runs a query once the newer columns exist (see schema.ts). */
+export async function q(text: string, params: unknown[] = []) {
+  await ensureSchema();
+  return (await db().query(text, params)) as Row[];
+}
 
 export type Overview = Awaited<ReturnType<typeof getOverview>>;
 
 export async function getOverview(days: number) {
-  const ig = `source = 'instagram' AND ${inRange("started_at")}`;
+  const ig = `source = 'instagram' AND NOT is_bot AND ${inRange("started_at")}`;
   const [
     fixed,
     kpi,
@@ -32,7 +38,7 @@ export async function getOverview(days: number) {
       WITH s AS (
         SELECT visitor_id, ${DAY("started_at")} AS d
         FROM sessions
-        WHERE source = 'instagram' AND started_at > now() - interval '62 days'
+        WHERE source = 'instagram' AND NOT is_bot AND started_at > now() - interval '62 days'
       ), t AS (SELECT ${TODAY} AS today)
       SELECT
         (count(DISTINCT visitor_id) FILTER (WHERE d = today))::int AS today,
@@ -62,7 +68,7 @@ export async function getOverview(days: number) {
               (count(s.id) FILTER (WHERE s.converted))::int AS leads
        FROM generate_series(${TODAY} - ($1::int - 1), ${TODAY}, interval '1 day') AS d(day)
        LEFT JOIN sessions s
-         ON s.source = 'instagram' AND ${DAY("s.started_at")} = d.day::date
+         ON s.source = 'instagram' AND NOT s.is_bot AND ${DAY("s.started_at")} = d.day::date
        GROUP BY d.day ORDER BY d.day`,
       [days],
     ),
@@ -77,17 +83,19 @@ export async function getOverview(days: number) {
       [days],
     ),
     q(
-      `SELECT city AS label, country_code AS code, count(*)::int AS count
-       FROM sessions WHERE ${ig} AND city IS NOT NULL
+      `SELECT CASE WHEN ${UNCERTAIN_SQL} THEN 'Copenhagen? (uncertain)' ELSE city END AS label,
+              country_code AS code, count(*)::int AS count
+       FROM sessions s WHERE ${ig} AND city IS NOT NULL
        GROUP BY 1, 2 ORDER BY count DESC, label LIMIT 8`,
       [days],
     ),
     q(
-      `SELECT COALESCE(city, country, 'Unknown') AS label, country,
+      `SELECT CASE WHEN ${UNCERTAIN_SQL} THEN 'Copenhagen? (uncertain)'
+                   ELSE COALESCE(city, country, 'Unknown') END AS label, country,
               round(latitude::numeric, 1)::float AS lat,
               round(longitude::numeric, 1)::float AS lon,
               count(*)::int AS count
-       FROM sessions
+       FROM sessions s
        WHERE ${ig} AND latitude IS NOT NULL AND longitude IS NOT NULL
        GROUP BY 1, 2, 3, 4 ORDER BY count DESC LIMIT 300`,
       [days],
@@ -111,7 +119,7 @@ export async function getOverview(days: number) {
       `SELECT p.path AS label, count(*)::int AS count,
               COALESCE(avg(p.time_on_page_seconds), 0)::float AS avg_time
        FROM pageviews p JOIN sessions s ON s.id = p.session_id
-       WHERE s.source = 'instagram' AND ${inRange("s.started_at")}
+       WHERE s.source = 'instagram' AND NOT s.is_bot AND ${inRange("s.started_at")}
        GROUP BY 1 ORDER BY count DESC, label LIMIT 8`,
       [days],
     ),
@@ -119,11 +127,11 @@ export async function getOverview(days: number) {
       SELECT s.*, v.linked_lead_name,
              (s.ended_at IS NULL AND s.last_activity_at > now() - interval '5 minutes') AS is_active
       FROM sessions s JOIN visitors v ON v.id = s.visitor_id
-      WHERE s.source = 'instagram'
+      WHERE s.source = 'instagram' AND NOT s.is_bot
       ORDER BY s.last_activity_at DESC LIMIT 8`),
     q(`
       SELECT count(*)::int AS count FROM sessions
-      WHERE source = 'instagram' AND ended_at IS NULL
+      WHERE source = 'instagram' AND NOT is_bot AND ended_at IS NULL
         AND last_activity_at > now() - interval '5 minutes'`),
   ]);
 
@@ -144,8 +152,13 @@ export async function getOverview(days: number) {
   };
 }
 
+export type VisitSource = "instagram" | "all" | "hidden" | Channel;
+
+export const parseVisitSource = (value: string | null | undefined): VisitSource =>
+  value === "all" || value === "hidden" || isChannel(value) ? value : "instagram";
+
 export type VisitFilters = {
-  source: "instagram" | "all";
+  source: VisitSource;
   from?: string;
   to?: string;
   country?: string;
@@ -163,7 +176,14 @@ function visitWhere(f: VisitFilters) {
     params.push(value);
     where.push(sql.replaceAll("?", `$${params.length}`));
   };
-  if (f.source !== "all") where.push("s.source = 'instagram'");
+  // Hidden visits (scanners, cloud networks and the owner's own) only show when asked for.
+  where.push(f.source === "hidden" ? "s.is_bot" : "NOT s.is_bot");
+  if (f.source === "instagram") where.push("s.source = 'instagram'");
+  else if (isChannel(f.source)) {
+    // Not through add(): the channel rules contain "?" in their patterns.
+    params.push(f.source);
+    where.push(`${CHANNEL_SQL} = $${params.length}`);
+  }
   if (f.from && DATE.test(f.from)) add(`${DAY("s.started_at")} >= ?::date`, f.from);
   if (f.to && DATE.test(f.to)) add(`${DAY("s.started_at")} <= ?::date`, f.to);
   if (f.country) add("s.country_code = ?", f.country.toUpperCase().slice(0, 2));
@@ -210,6 +230,7 @@ export function listCountries() {
 }
 
 export async function getVisitor(id: string) {
+  await ensureSchema();
   const [visitor] = await db()`SELECT * FROM visitors WHERE id = ${id}`;
   if (!visitor) return null;
   const [sessions, pageviews, events, notifications, leads] = await Promise.all([
@@ -256,7 +277,7 @@ export function linkPerformance() {
            count(DISTINCT visitor_id)::int AS visitors,
            (count(*) FILTER (WHERE converted))::int AS leads,
            COALESCE(avg(page_count), 0)::float AS avg_pages
-    FROM sessions WHERE source = 'instagram'
+    FROM sessions WHERE source = 'instagram' AND NOT is_bot
     GROUP BY 1, 2, 3 ORDER BY visits DESC, leads DESC LIMIT 50`);
 }
 

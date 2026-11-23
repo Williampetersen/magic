@@ -14,8 +14,20 @@ import {
 import { requestOrigin, requireAdmin } from "@/lib/tracking/adminAuth";
 import { hasDb } from "@/lib/tracking/db";
 import { deviceName, fmtAgo, fmtDateTime, fmtDuration } from "@/lib/tracking/format";
+import {
+  CHANNELS,
+  CHANNEL_SHORT,
+  UNCERTAIN_HINT,
+  cityText,
+  isUncertain,
+} from "@/lib/tracking/location";
 import { closeStaleSessions } from "@/lib/tracking/notify";
-import { type VisitFilters, listCountries, listVisits } from "@/lib/tracking/queries";
+import {
+  type VisitFilters,
+  listCountries,
+  listVisits,
+  parseVisitSource,
+} from "@/lib/tracking/queries";
 import Link from "next/link";
 import { after } from "next/server";
 import {
@@ -41,7 +53,7 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
     return (Array.isArray(value) ? value[0] : value) || "";
   };
   const filters: VisitFilters = {
-    source: get("source") === "all" ? "all" : "instagram",
+    source: parseVisitSource(get("source")),
     from: get("from"),
     to: get("to"),
     country: get("country"),
@@ -104,8 +116,14 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
         <label className={styles.field}>
           <span>Source</span>
           <select className={styles.control} name="source" defaultValue={filters.source}>
-            <option value="instagram">Instagram</option>
+            <option value="instagram">Instagram (all)</option>
             <option value="all">All sources</option>
+            {CHANNELS.filter((c) => c !== "instagram").map((c) => (
+              <option key={c} value={c}>
+                {CHANNEL_SHORT[c]}
+              </option>
+            ))}
+            <option value="hidden">Hidden (bots and you)</option>
           </select>
         </label>
         <label className={styles.field}>
@@ -191,8 +209,15 @@ export default async function VisitorsPage({ searchParams }: { searchParams: Pro
                 <span className={cx(styles.cell, styles.aLoc)}>
                   <Flag code={s.country_code} title={s.country} />
                   <span className={styles.cellStack}>
-                    <span className={styles.truncate}>{s.city || s.country || "Unknown"}</span>
-                    {s.city && s.country && <small>{s.country}</small>}
+                    <span
+                      className={styles.truncate}
+                      title={isUncertain(s) ? UNCERTAIN_HINT : undefined}
+                    >
+                      {cityText(s)}
+                    </span>
+                    {s.city && s.country && (
+                      <small>{isUncertain(s) ? "City uncertain" : s.country}</small>
+                    )}
                   </span>
                 </span>
                 <span className={cx(styles.cell, styles.aDev)}>

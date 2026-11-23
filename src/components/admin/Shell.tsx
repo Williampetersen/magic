@@ -13,6 +13,7 @@ import {
   LuLayoutDashboard,
   LuLink,
   LuLogOut,
+  LuMapPin,
   LuSettings,
   LuUserCheck,
   LuUsers,
@@ -20,6 +21,7 @@ import {
 
 const NAV = [
   { href: "/admin", label: "Overview", short: "Overview", icon: LuLayoutDashboard },
+  { href: "/admin/locations", label: "Locations", short: "Cities", icon: LuMapPin },
   { href: "/admin/visitors", label: "Visitors", short: "Visitors", icon: LuUsers },
   { href: "/admin/leads", label: "Leads", short: "Leads", icon: LuUserCheck },
   { href: "/admin/notifications", label: "Notifications", short: "Alerts", icon: LuBell },

@@ -7,6 +7,7 @@ import {
   isMetaScanner,
   isUuid,
 } from "@/lib/tracking/detect";
+import { ensureSchema } from "@/lib/tracking/schema";
 import { siteOrigin } from "@/lib/tracking/settings";
 import {
   SESSION_COOKIE,
@@ -56,6 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = JSON.parse(await request.text()) as Record<string, unknown>;
+    await ensureSchema();
     // Visitors who accepted cookies are known by their cookies. Everyone else
     // is tracked without cookies: the page keeps the two IDs in memory and
     // sends them along (body.vid / body.sid). Nothing is stored on their device.

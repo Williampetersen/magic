@@ -19,6 +19,7 @@ import {
   sourceLabel,
 } from "@/lib/tracking/format";
 import { addNearestAddress } from "@/lib/tracking/geocode";
+import { cityText } from "@/lib/tracking/location";
 import { getVisitor } from "@/lib/tracking/queries";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -28,6 +29,8 @@ import {
   LuChevronRight,
   LuCircleCheck,
   LuExternalLink,
+  LuEye,
+  LuEyeOff,
   LuFileText,
   LuFlame,
   LuLogIn,
@@ -37,7 +40,7 @@ import {
   LuPhone,
   LuTrash2,
 } from "react-icons/lu";
-import { deleteVisitorAction } from "../../../actions";
+import { deleteVisitorAction, setVisitorExcludedAction } from "../../../actions";
 import styles from "../../../admin.module.scss";
 
 function Def({ label, wide, children }: { label: string; wide?: boolean; children: ReactNode }) {
@@ -207,7 +210,7 @@ export default async function VisitorPage({
             <Flag code={latest?.country_code} title={latest?.country} />
             <h1 className={styles.h1}>
               {visitor.linked_lead_name ||
-                `Visitor from ${latest?.city || latest?.country || "an unknown place"}`}
+                `Visitor from ${latest ? cityText(latest) : "an unknown place"}`}
             </h1>
           </div>
           <div className={styles.badgeRow}>
@@ -454,6 +457,25 @@ export default async function VisitorPage({
             ))}
           </Card>
         )}
+
+        <Card
+          className={styles.col12}
+          title={visitor.excluded ? "Hidden from statistics" : "Is this you?"}
+          description={
+            visitor.excluded
+              ? "You marked this visitor as yourself. Their visits stay out of every number, list and email, also future visits from the same phone or computer on the same internet connection."
+              : "If this is your own phone or computer (for example when you test your Instagram link), hide it so your visits do not count as customers."
+          }
+        >
+          <form action={setVisitorExcludedAction}>
+            <input type="hidden" name="id" value={visitor.id} />
+            <input type="hidden" name="excluded" value={visitor.excluded ? "0" : "1"} />
+            <button type="submit" className={styles.btn}>
+              {visitor.excluded ? <LuEye aria-hidden /> : <LuEyeOff aria-hidden />}
+              {visitor.excluded ? "Count this visitor again" : "This is me – hide from statistics"}
+            </button>
+          </form>
+        </Card>
 
         <Card
           className={styles.col12}

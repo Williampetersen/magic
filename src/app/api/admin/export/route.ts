@@ -1,7 +1,8 @@
 import { isAdmin } from "@/lib/tracking/adminAuth";
 import { hasDb } from "@/lib/tracking/db";
 import { fmtDateTime } from "@/lib/tracking/format";
-import { type VisitFilters, listVisits } from "@/lib/tracking/queries";
+import { isUncertain } from "@/lib/tracking/location";
+import { type VisitFilters, listVisits, parseVisitSource } from "@/lib/tracking/queries";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -24,6 +25,7 @@ const COLUMNS: [string, string][] = [
   ["region", "Region"],
   ["city", "City"],
   ["postal_code", "Postal code"],
+  ["city_certainty", "City certainty"],
   ["near_road", "Nearest road (approximate)"],
   ["near_postcode", "Nearest postal code"],
   ["near_city", "Nearest city"],
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
 
   const p = request.nextUrl.searchParams;
   const filters: VisitFilters = {
-    source: p.get("source") === "all" ? "all" : "instagram",
+    source: parseVisitSource(p.get("source")),
     from: p.get("from") || "",
     to: p.get("to") || "",
     country: p.get("country") || "",
@@ -80,6 +82,13 @@ export async function GET(request: NextRequest) {
 
   const lines = [COLUMNS.map(([, title]) => cell(title)).join(",")];
   for (const row of rows) {
+    row.city_certainty = isUncertain(row)
+      ? "uncertain (provider registered in Copenhagen)"
+      : row.geo_source === "ipinfo"
+        ? "IPinfo"
+        : row.city
+          ? "Vercel"
+          : "";
     lines.push(
       COLUMNS.map(([key]) => cell(key === "started_at" ? fmtDateTime(row[key]) : row[key])).join(
         ",",

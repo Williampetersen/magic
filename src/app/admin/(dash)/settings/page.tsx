@@ -79,11 +79,11 @@ export default async function SettingsPage() {
             </Check>
             <Check
               state={env.IPINFO_TOKEN ? "ok" : "off"}
-              title="Internet provider lookup (IPINFO_TOKEN)"
+              title="Second location opinion (IPINFO_TOKEN)"
             >
               {env.IPINFO_TOKEN
-                ? "The visitor’s internet provider is looked up at ipinfo.io."
-                : "Optional. Add a free ipinfo.io token to see each visitor’s internet provider."}
+                ? "New visits are checked at ipinfo.io: internet provider, a better city when Vercel only knows the provider’s Copenhagen address, and cloud servers are hidden."
+                : "Optional but recommended. Create a free account at ipinfo.io, copy the token from the dashboard and add it in Vercel → Settings → Environment Variables as IPINFO_TOKEN, then redeploy. New visits then get the internet provider, often a better city, and cloud servers (bots) are hidden."}
             </Check>
           </ul>
         </Card>

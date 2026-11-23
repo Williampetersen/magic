@@ -9,6 +9,7 @@ import {
   summaryEmail,
 } from "./emails";
 import { TIME_ZONE, fmtDay } from "./format";
+import { cityText } from "./location";
 import { sendMail } from "./mail";
 import { type Settings, alertRecipient, getSettings, isOn, num } from "./settings";
 
@@ -73,7 +74,7 @@ export async function deliver(d: Delivery) {
 
 /** Triggers 1 and 2: new or returning Instagram visitor, sent when the session starts. */
 export async function notifyArrival(session: Row, origin: string) {
-  if (session.source !== "instagram") return;
+  if (session.source !== "instagram" || session.is_bot) return;
   const settings = await getSettings();
   const returning = Boolean(session.is_returning);
   if (!isOn(settings, returning ? "trigger_returning_visitor" : "trigger_new_visitor")) return;
@@ -108,7 +109,7 @@ export async function notifyArrival(session: Row, origin: string) {
 
 /** Trigger 3: 3+ pages, 2+ minutes, or a pricing page (thresholds come from settings). */
 export async function checkHighInterest(session: Row, origin: string) {
-  if (session.high_interest) return;
+  if (session.high_interest || session.is_bot) return;
   const settings = await getSettings();
   const minPages = num(settings, "high_interest_pages", 1, 100);
   const minSeconds = num(settings, "high_interest_seconds", 1, 86400);
@@ -152,7 +153,7 @@ export async function checkHighInterest(session: Row, origin: string) {
  * sent" and the visit summary. Returns how many emails went out.
  */
 async function sendSessionEndEmails(s: Row, settings: Settings, origin: string, why: string) {
-  if (s.source !== "instagram") return 0;
+  if (s.source !== "instagram" || s.is_bot) return 0;
   // Visits that ended long ago get no separate email: the daily digest covers them.
   if (Date.now() - new Date(s.ended_at).getTime() > 3 * 3_600_000) return 0;
 
@@ -266,12 +267,14 @@ export async function sendDailyDigest(origin: string) {
   const [sessions, pages, leads] = await Promise.all([
     db()`
       SELECT * FROM sessions
-      WHERE source = 'instagram' AND (started_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date
+      WHERE source = 'instagram' AND NOT is_bot
+        AND (started_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date
       ORDER BY started_at`,
     db()`
       SELECT p.path AS label, count(*)::int AS count
       FROM pageviews p JOIN sessions s ON s.id = p.session_id
-      WHERE s.source = 'instagram' AND (s.started_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date
+      WHERE s.source = 'instagram' AND NOT s.is_bot
+        AND (s.started_at AT TIME ZONE ${TIME_ZONE})::date = ${day}::date
       GROUP BY p.path ORDER BY count DESC LIMIT 8`,
     db()`
       SELECT l.name, l.email FROM leads l JOIN sessions s ON s.id = l.session_id
@@ -292,7 +295,7 @@ export async function sendDailyDigest(origin: string) {
     returningVisitors: visitorIds.size - newIds.size,
     leads,
     countries: topCounts(sessions, (s) => s.country),
-    cities: topCounts(sessions, (s) => s.city),
+    cities: topCounts(sessions, (s) => cityText(s)),
     pages,
     devices: topCounts(sessions, (s) =>
       [s.device_type === "mobile" ? "Phone" : s.device_type, s.os].filter(Boolean).join(" · "),
