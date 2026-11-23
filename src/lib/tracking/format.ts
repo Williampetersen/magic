@@ -1,4 +1,5 @@
 import type { Row } from "./db";
+import { PLACEHOLDER_MODEL, displayModel } from "./devices";
 
 export const TIME_ZONE = "Europe/Copenhagen";
 
@@ -105,11 +106,12 @@ export const googleMapsUrl = (latitude: number, longitude: number) =>
 
 /** "iPhone 13", "Samsung Galaxy S23 Ultra", "Mac", "Windows computer" */
 export function deviceName(s: Row) {
-  if (s.device_model === "Macintosh") return "Mac";
-  if (s.device_model) {
+  const model = displayModel(s.device_model);
+  if (model === "Macintosh") return "Mac";
+  if (model) {
     const showVendor =
-      s.device_vendor && s.device_vendor !== "Apple" && !s.device_model.startsWith(s.device_vendor);
-    return showVendor ? `${s.device_vendor} ${s.device_model}` : s.device_model;
+      s.device_vendor && s.device_vendor !== "Apple" && !model.startsWith(s.device_vendor);
+    return showVendor ? `${s.device_vendor} ${model}` : model;
   }
   if (s.device_type === "mobile") return "Phone";
   if (s.device_type === "tablet") return "Tablet";
@@ -118,7 +120,10 @@ export function deviceName(s: Row) {
 }
 
 export function deviceLabel(s: Row) {
-  const os = [s.os, s.os_version].filter(Boolean).join(" ");
+  // Visits stored with Chrome's placeholder phone also carry its placeholder
+  // system version ("Android 10"), which says nothing about the real phone.
+  const version = s.device_model === PLACEHOLDER_MODEL ? null : s.os_version;
+  const os = [s.os, version].filter(Boolean).join(" ");
   const browser = [s.browser, s.browser_version?.split(".")[0]].filter(Boolean).join(" ");
   return [deviceName(s), os, browser].filter(Boolean).join(" · ");
 }

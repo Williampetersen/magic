@@ -1,6 +1,12 @@
 import { ADMIN_COOKIE, verifySessionToken } from "@/lib/tracking/adminToken";
 import { hasDb } from "@/lib/tracking/db";
-import { clientIp, isBot, isMetaScanner, isUuid } from "@/lib/tracking/detect";
+import {
+  clientIp,
+  isAutomatedClient,
+  isBot,
+  isMetaScanner,
+  isUuid,
+} from "@/lib/tracking/detect";
 import { siteOrigin } from "@/lib/tracking/settings";
 import {
   SESSION_COOKIE,
@@ -96,6 +102,8 @@ export async function POST(request: NextRequest) {
     }
 
     if (body.t === "pv") {
+      // Scanners and crawlers that look like an ordinary browser. Not visitors.
+      if (isAutomatedClient(ua, body)) return empty();
       const result = await recordPageview(ctx, body);
       if (!result) return empty();
       after(() => result.background().catch((err) => console.error("track background", err)));

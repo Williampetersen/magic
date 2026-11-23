@@ -33,6 +33,44 @@ let firstSearch: string | null = null;
 let firstReferrer: string | null = null;
 let visitId: string | null = null;
 let visitorId: string | null = null;
+// How many times in a row the server said the visit had ended. Stops a page
+// from asking again and again when the server will not record it.
+let restarts = 0;
+const MAX_RESTARTS = 3;
+
+// Chromium browsers hide the real phone model ("K" on every Android phone) and
+// system version in the user agent, and give them to the page on request.
+// Safari and Firefox have no such request: there the user agent is used alone.
+let deviceHints: { model?: string; osv?: string } = {};
+let hintsRequested = false;
+
+function requestDeviceHints() {
+  if (hintsRequested) return;
+  hintsRequested = true;
+  try {
+    const data = (
+      navigator as Navigator & {
+        userAgentData?: {
+          getHighEntropyValues?: (
+            hints: string[],
+          ) => Promise<{ model?: string; platformVersion?: string }>;
+        };
+      }
+    ).userAgentData;
+    if (typeof data?.getHighEntropyValues !== "function") return;
+    data
+      .getHighEntropyValues(["model", "platformVersion"])
+      .then((values) => {
+        deviceHints = {
+          model: values.model || undefined,
+          osv: values.platformVersion || undefined,
+        };
+      })
+      .catch(() => {});
+  } catch {
+    // Not supported: the user agent is used alone.
+  }
+}
 
 function readConsent(): Consent {
   try {
@@ -151,6 +189,7 @@ export function Tracker() {
       firstSearch = window.location.search;
       firstReferrer = document.referrer;
     }
+    requestDeviceHints();
     const saved = readConsent();
     setConsent(saved);
     setBannerOpen(saved === "unset");
@@ -190,6 +229,8 @@ export function Tracker() {
         vw: window.innerWidth,
         vh: window.innerHeight,
         conn: nav.connection?.type || nav.connection?.effectiveType || null,
+        model: deviceHints.model,
+        osv: deviceHints.osv,
       }).then((res) => {
         if (res?.sid && res.vid) {
           visitId = res.sid;
@@ -238,9 +279,17 @@ export function Tracker() {
       // Wait for the pageview's answer first, so the visit IDs are known.
       (p.ready ?? Promise.resolve()).then(() =>
         post(data).then((res) => {
-          // The visit timed out on the server: begin a new one on this page.
-          if (res?.expired && page.current === p) {
-            visitId = null;
+          if (!res) return;
+          if (!res.expired) {
+            restarts = 0;
+            return;
+          }
+          // The visit has ended on the server (page was closed, or no activity
+          // for a while). Send this page again and keep the visit IDs: the
+          // server continues the same visit when the visitor came back in
+          // time, and starts a new one when it was too long ago.
+          if (page.current === p && restarts < MAX_RESTARTS) {
+            restarts++;
             startPage();
           }
         }),

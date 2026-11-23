@@ -160,7 +160,10 @@ async function startSession(ctx: TrackContext, body: Body, path: string) {
     ip_masked: maskIp(ip),
     ip_hash: ipHash,
     user_agent: ctx.ua.slice(0, 600),
-    ...parseUserAgent(ctx.ua),
+    ...parseUserAgent(ctx.ua, {
+      model: clip(body.model, 60),
+      platformVersion: clip(body.osv, 20),
+    }),
     is_instagram_in_app_browser: isInstagramInApp(ctx.ua),
     language: clip(body.lang, 20) || clip(ctx.headers.get("accept-language")?.split(",")[0], 20),
     screen_width: int(body.sw, 0, 20000),
