@@ -13,6 +13,7 @@ const BOM = String.fromCharCode(0xfeff);
 
 function cell(value: unknown) {
   if (value === null || value === undefined) return "";
+  if (typeof value === "number") return Number.isFinite(value) ? String(value) : "";
   let text = String(value);
   // Stop spreadsheet apps from running a cell as a formula.
   if (/^[=+\-@\t\r]/.test(text)) text = `'${text}`;
@@ -70,10 +71,10 @@ export async function GET(request: NextRequest) {
         c.visitors ? Math.round((c.leads / c.visitors) * 100) : 0,
         c.engaged,
         Math.round(c.avg_duration),
-        c.avg_pages.toFixed(1),
+        Math.round(c.avg_pages * 10) / 10,
         c.postcodes,
-        c.lat?.toFixed(4),
-        c.lon?.toFixed(4),
+        c.lat == null ? null : Math.round(c.lat * 10000) / 10000,
+        c.lon == null ? null : Math.round(c.lon * 10000) / 10000,
         fmtDateTime(c.last_visit),
         c.uncertain || !c.city ? "" : [c.city, metaRegion, c.country].filter(Boolean).join(", "),
       ]
